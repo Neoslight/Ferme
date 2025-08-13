@@ -1,25 +1,39 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { doc, getDoc, deleteDoc, onSnapshot } from 'firebase/firestore';
+import { doc, getDoc, deleteDoc, onSnapshot, collection } from 'firebase/firestore';
 import { db } from '../firebaseConfig';
 import HealthLog from '../components/HealthLog';
 import MovementLog from '../components/MovementLog';
 import LifeEventsLog from '../components/LifeEventsLog';
 import ReproductionLog from '../components/ReproductionLog';
+import CostsLog from '../components/CostsLog';
+import RevenuesLog from '../components/RevenuesLog';
 
 const AnimalDetailPage = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const [animal, setAnimal] = useState(null);
+  const [assignedRation, setAssignedRation] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     setLoading(true);
     const animalDocRef = doc(db, 'animals', id);
 
-    const unsubscribe = onSnapshot(animalDocRef, (doc) => {
-      if (doc.exists()) {
-        setAnimal({ id: doc.id, ...doc.data() });
+    const unsubscribe = onSnapshot(animalDocRef, async (animalDoc) => {
+      if (animalDoc.exists()) {
+        const animalData = { id: animalDoc.id, ...animalDoc.data() };
+        setAnimal(animalData);
+
+        if (animalData.rationId) {
+          const rationDocRef = doc(db, 'rations', animalData.rationId);
+          const rationDoc = await getDoc(rationDocRef);
+          if (rationDoc.exists()) {
+            setAssignedRation(rationDoc.data());
+          }
+        } else {
+          setAssignedRation(null);
+        }
       } else {
         console.log("No such document!");
       }
@@ -68,6 +82,13 @@ const AnimalDetailPage = () => {
         <p><strong>Statut:</strong> {animal.statut}</p>
         <p><strong>Localisation Actuelle:</strong> {animal.currentLocation || 'Non définie'}</p>
 
+        {assignedRation && (
+           <div style={{ marginTop: '1rem', padding: '1rem', backgroundColor: '#e6f7ff', border: '1px solid #91d5ff', borderRadius: '8px' }}>
+            <p style={{ margin: 0, fontWeight: 'bold' }}>Ration: {assignedRation.name}</p>
+            <p style={{ margin: 0 }}>{assignedRation.description}</p>
+          </div>
+        )}
+
         {animal.estimatedDueDate && (
           <div style={{ marginTop: '1rem', padding: '1rem', backgroundColor: '#fffbe6', border: '1px solid #ffe58f', borderRadius: '8px' }}>
             <p style={{ margin: 0, fontWeight: 'bold', color: '#d46b08' }}>
@@ -87,6 +108,13 @@ const AnimalDetailPage = () => {
       <div className="card no-print"><MovementLog animalId={id} currentAnimalData={animal} /></div>
       <div className="card no-print"><LifeEventsLog animalId={id} /></div>
       <div className="card no-print"><ReproductionLog animal={animal} /></div>
+      <div className="card no-print">
+        <h2>Suivi Financier</h2>
+        <div style={{display: 'flex', gap: '2rem', flexWrap: 'wrap'}}>
+          <div style={{flex: 1, minWidth: '300px'}}><CostsLog animalId={id} /></div>
+          <div style={{flex: 1, minWidth: '300px'}}><RevenuesLog animalId={id} /></div>
+        </div>
+      </div>
     </div>
   );
 };

@@ -1,25 +1,31 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { doc, getDoc, updateDoc } from 'firebase/firestore';
+import { doc, getDoc, updateDoc, collection, getDocs } from 'firebase/firestore';
 import { db } from '../firebaseConfig';
 
 const EditAnimalPage = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const [formData, setFormData] = useState(null);
+  const [rations, setRations] = useState([]);
 
   useEffect(() => {
-    const fetchAnimal = async () => {
+    const fetchAnimalAndRations = async () => {
+      // Fetch Rations
+      const rationsSnapshot = await getDocs(collection(db, 'rations'));
+      const rationsList = rationsSnapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+      setRations(rationsList);
+
+      // Fetch Animal
       const animalDocRef = doc(db, 'animals', id);
       const animalDoc = await getDoc(animalDocRef);
       if (animalDoc.exists()) {
         const data = animalDoc.data();
-        // Firebase Timestamps need to be converted for the date input field
         const birthDate = data.dateDeNaissance ? new Date(data.dateDeNaissance.seconds * 1000).toISOString().split('T')[0] : '';
         setFormData({ ...data, dateDeNaissance: birthDate });
       }
     };
-    fetchAnimal();
+    fetchAnimalAndRations();
   }, [id]);
 
   const handleChange = (e) => {
@@ -90,6 +96,15 @@ const EditAnimalPage = () => {
             <option value="Présent">Présent</option>
             <option value="Vendu">Vendu</option>
             <option value="Décédé">Décédé</option>
+          </select>
+        </p>
+        <p>
+          <label>Ration Alimentaire: </label>
+          <select name="rationId" value={formData.rationId || ''} onChange={handleChange}>
+            <option value="">Aucune</option>
+            {rations.map(ration => (
+              <option key={ration.id} value={ration.id}>{ration.name}</option>
+            ))}
           </select>
         </p>
         <button type="submit">Mettre à jour</button>

@@ -7,6 +7,9 @@ import AnimalDetailPage from './pages/AnimalDetailPage';
 import AddAnimalPage from './pages/AddAnimalPage';
 import EditAnimalPage from './pages/EditAnimalPage';
 import EnclosuresPage from './pages/EnclosuresPage';
+import FinancialReportPage from './pages/FinancialReportPage';
+import FoodStockPage from './pages/FoodStockPage';
+import RationsPage from './pages/RationsPage';
 
 
 function App() {
@@ -15,13 +18,22 @@ function App() {
       <nav>
         <ul>
           <li>
-            <Link to="/">Liste des Animaux</Link>
+            <Link to="/">Tableau de Bord</Link>
           </li>
           <li>
             <Link to="/add">Ajouter un Animal</Link>
           </li>
           <li>
             <Link to="/enclosures">Gérer les Enclos</Link>
+          </li>
+          <li>
+            <Link to="/stock/food">Gestion du Stock</Link>
+          </li>
+          <li>
+            <Link to="/rations">Gestion des Rations</Link>
+          </li>
+          <li>
+            <Link to="/reports/financial">Rapport Financier</Link>
           </li>
         </ul>
       </nav>
@@ -33,6 +45,9 @@ function App() {
           <Route path="/animal/:id/edit" element={<EditAnimalPage />} />
           <Route path="/add" element={<AddAnimalPage />} />
           <Route path="/enclosures" element={<EnclosuresPage />} />
+          <Route path="/reports/financial" element={<FinancialReportPage />} />
+          <Route path="/stock/food" element={<FoodStockPage />} />
+          <Route path="/rations" element={<RationsPage />} />
         </Routes>
       </main>
     </div>
