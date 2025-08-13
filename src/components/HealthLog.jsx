@@ -14,7 +14,8 @@ const HealthLog = ({ animalId }) => {
     date: new Date().toISOString().split('T')[0],
     type: 'Soin',
     description: '',
-    traitement: ''
+    traitement: '',
+    reminderDate: ''
   });
 
   const healthLogsCollectionRef = collection(db, 'animals', animalId, 'health_logs');
@@ -73,16 +74,23 @@ const HealthLog = ({ animalId }) => {
       return;
     }
     try {
-      await addDoc(healthLogsCollectionRef, {
-        ...formData,
-        date: new Date(formData.date)
-      });
-      // Reset form and refetch the first page to show the new entry
+      const newLog = {
+        date: new Date(formData.date),
+        type: formData.type,
+        description: formData.description,
+        traitement: formData.traitement,
+      };
+      if (formData.reminderDate) {
+        newLog.reminderDate = new Date(formData.reminderDate);
+      }
+      await addDoc(healthLogsCollectionRef, newLog);
+
       setFormData({
         date: new Date().toISOString().split('T')[0],
         type: 'Soin',
         description: '',
-        traitement: ''
+        traitement: '',
+        reminderDate: ''
       });
       fetchLogs();
     } catch (error) {
@@ -97,7 +105,7 @@ const HealthLog = ({ animalId }) => {
 
       <h4>Ajouter un événement</h4>
       <form onSubmit={handleSubmit}>
-        <p><label>Date: </label><input type="date" name="date" value={formData.date} onChange={handleChange} required /></p>
+        <p><label>Date de l'événement: </label><input type="date" name="date" value={formData.date} onChange={handleChange} required /></p>
         <p>
           <label>Type: </label>
           <select name="type" value={formData.type} onChange={handleChange}>
@@ -110,6 +118,7 @@ const HealthLog = ({ animalId }) => {
         </p>
         <p><label>Description: </label><textarea name="description" value={formData.description} onChange={handleChange} required></textarea></p>
         <p><label>Traitement: </label><input type="text" name="traitement" value={formData.traitement} onChange={handleChange} /></p>
+        <p><label>Date de rappel (Optionnel):</label><input type="date" name="reminderDate" value={formData.reminderDate} onChange={handleChange} /></p>
         <button type="submit">Ajouter</button>
       </form>
 

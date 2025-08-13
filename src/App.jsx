@@ -10,6 +10,7 @@ import EnclosuresPage from './pages/EnclosuresPage';
 import FinancialReportPage from './pages/FinancialReportPage';
 import FoodStockPage from './pages/FoodStockPage';
 import RationsPage from './pages/RationsPage';
+import CalendarPage from './pages/CalendarPage';
 
 
 function App() {
@@ -19,6 +20,9 @@ function App() {
         <ul>
           <li>
             <Link to="/">Tableau de Bord</Link>
+          </li>
+          <li>
+            <Link to="/calendar">Calendrier & Tâches</Link>
           </li>
           <li>
             <Link to="/add">Ajouter un Animal</Link>
@@ -48,6 +52,7 @@ function App() {
           <Route path="/reports/financial" element={<FinancialReportPage />} />
           <Route path="/stock/food" element={<FoodStockPage />} />
           <Route path="/rations" element={<RationsPage />} />
+          <Route path="/calendar" element={<CalendarPage />} />
         </Routes>
       </main>
     </div>
