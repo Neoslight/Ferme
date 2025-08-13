@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { doc, getDoc, deleteDoc } from 'firebase/firestore';
+import { doc, getDoc, deleteDoc, onSnapshot } from 'firebase/firestore';
 import { db } from '../firebaseConfig';
 import HealthLog from '../components/HealthLog';
 import MovementLog from '../components/MovementLog';
@@ -13,24 +13,22 @@ const AnimalDetailPage = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const fetchAnimal = async () => {
-      try {
-        const animalDocRef = doc(db, 'animals', id);
-        const animalDoc = await getDoc(animalDocRef);
+    setLoading(true);
+    const animalDocRef = doc(db, 'animals', id);
 
-        if (animalDoc.exists()) {
-          setAnimal({ id: animalDoc.id, ...animalDoc.data() });
-        } else {
-          console.log("No such document!");
-        }
-      } catch (error) {
-        console.error("Error fetching document: ", error);
-      } finally {
-        setLoading(false);
+    const unsubscribe = onSnapshot(animalDocRef, (doc) => {
+      if (doc.exists()) {
+        setAnimal({ id: doc.id, ...doc.data() });
+      } else {
+        console.log("No such document!");
       }
-    };
+      setLoading(false);
+    }, (error) => {
+      console.error("Error with onSnapshot: ", error);
+      setLoading(false);
+    });
 
-    fetchAnimal();
+    return () => unsubscribe();
   }, [id]);
 
   const handleDelete = async () => {

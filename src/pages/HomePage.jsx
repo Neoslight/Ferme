@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { collection, getDocs } from 'firebase/firestore';
+import { collection, query, orderBy, limit, getDocs, startAfter } from 'firebase/firestore';
 import { db } from '../firebaseConfig';
 import { Link } from 'react-router-dom';
 
@@ -10,41 +10,81 @@ const StatCard = ({ title, value }) => (
   </div>
 );
 
+const PAGE_SIZE = 15;
+
 const HomePage = () => {
-  const [animals, setAnimals] = useState([]);
+  const [allAnimals, setAllAnimals] = useState([]); // For stats
+  const [paginatedAnimals, setPaginatedAnimals] = useState([]); // For list display
+  const [lastVisible, setLastVisible] = useState(null);
+  const [hasMore, setHasMore] = useState(true);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
 
+  // Initial fetch for stats and first page
   useEffect(() => {
-    const fetchAnimals = async () => {
+    const fetchInitialData = async () => {
       setLoading(true);
-      try {
-        const animalsCollection = collection(db, 'animals');
-        const animalSnapshot = await getDocs(animalsCollection);
-        const animalList = animalSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        setAnimals(animalList);
-      } catch (error) {
-        console.error("Error fetching animals: ", error);
-      } finally {
-        setLoading(false);
-      }
-    };
+      // Fetch all for stats - this could be optimized further with a separate stats doc
+      const allAnimalsSnapshot = await getDocs(collection(db, 'animals'));
+      const allAnimalsList = allAnimalsSnapshot.docs.map(doc => doc.data());
+      setAllAnimals(allAnimalsList);
 
-    fetchAnimals();
+      // Fetch first page
+      const firstPageQuery = query(collection(db, 'animals'), orderBy('nom'), limit(PAGE_SIZE));
+      const documentSnapshots = await getDocs(firstPageQuery);
+
+      const firstPageAnimals = documentSnapshots.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      setPaginatedAnimals(firstPageAnimals);
+
+      const lastDoc = documentSnapshots.docs[documentSnapshots.docs.length - 1];
+      setLastVisible(lastDoc);
+
+      if (documentSnapshots.docs.length < PAGE_SIZE) {
+        setHasMore(false);
+      }
+
+      setLoading(false);
+    };
+    fetchInitialData();
   }, []);
 
+  const handleLoadMore = async () => {
+    if (!hasMore) return;
+    setLoadingMore(true);
+
+    const nextPageQuery = query(
+      collection(db, 'animals'),
+      orderBy('nom'),
+      startAfter(lastVisible),
+      limit(PAGE_SIZE)
+    );
+
+    const documentSnapshots = await getDocs(nextPageQuery);
+    const newAnimals = documentSnapshots.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    setPaginatedAnimals(prevAnimals => [...prevAnimals, ...newAnimals]);
+
+    const lastDoc = documentSnapshots.docs[documentSnapshots.docs.length - 1];
+    setLastVisible(lastDoc);
+
+    if (documentSnapshots.docs.length < PAGE_SIZE) {
+      setHasMore(false);
+    }
+    setLoadingMore(false);
+  };
+
   const stats = useMemo(() => {
-    const total = animals.length;
-    const bySpecies = animals.reduce((acc, animal) => {
+    const total = allAnimals.length;
+    const bySpecies = allAnimals.reduce((acc, animal) => {
       acc[animal.espece] = (acc[animal.espece] || 0) + 1;
       return acc;
     }, {});
-    const byStatus = animals.reduce((acc, animal) => {
+    const byStatus = allAnimals.reduce((acc, animal) => {
       acc[animal.statut] = (acc[animal.statut] || 0) + 1;
       return acc;
     }, {});
 
     return { total, bySpecies, byStatus };
-  }, [animals]);
+  }, [allAnimals]);
 
   if (loading) {
     return <p>Chargement du tableau de bord...</p>;
@@ -69,22 +109,31 @@ const HomePage = () => {
 
       <hr />
 
-      <h2>Liste Complète des Animaux</h2>
-      {animals.length === 0 ? (
+      <h2>Liste des Animaux</h2>
+      {paginatedAnimals.length === 0 ? (
         <p>Aucun animal trouvé. <Link to="/add">Ajoutez-en un !</Link></p>
       ) : (
-        <ul className="animal-list">
-          {animals.map(animal => (
-            <li key={animal.id}>
-              <Link to={`/animal/${animal.id}`} className="animal-list-item">
-                <div>
-                  <strong>{animal.nom}</strong> ({animal.espece})
-                </div>
-                <span style={{ color: '#888', fontSize: '0.9rem' }}>{animal.statut}</span>
-              </Link>
-            </li>
-          ))}
-        </ul>
+        <>
+          <ul className="animal-list">
+            {paginatedAnimals.map(animal => (
+              <li key={animal.id}>
+                <Link to={`/animal/${animal.id}`} className="animal-list-item">
+                  <div>
+                    <strong>{animal.nom}</strong> ({animal.espece})
+                  </div>
+                  <span style={{ color: '#888', fontSize: '0.9rem' }}>{animal.statut}</span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+          {hasMore && (
+            <div style={{ textAlign: 'center', marginTop: '1.5rem' }}>
+              <button onClick={handleLoadMore} disabled={loadingMore}>
+                {loadingMore ? 'Chargement...' : 'Charger plus'}
+              </button>
+            </div>
+          )}
+        </>
       )}
     </div>
   );
