@@ -2,6 +2,8 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { collection, query, orderBy, limit, getDocs, startAfter } from 'firebase/firestore';
 import { db } from '../firebaseConfig';
 import { Link } from 'react-router-dom';
+import SpeciesPieChart from '../components/charts/SpeciesPieChart';
+import BirthsBarChart from '../components/charts/BirthsBarChart';
 
 const StatCard = ({ title, value }) => (
   <div style={{ border: '1px solid #ddd', padding: '1rem', borderRadius: '8px', textAlign: 'center' }}>
@@ -20,56 +22,96 @@ const HomePage = () => {
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
 
-  // Initial fetch for stats and first page
+  // Filters state
+  const [searchTerm, setSearchTerm] = useState('');
+  const [speciesFilter, setSpeciesFilter] = useState('');
+  const [statusFilter, setStatusFilter] = useState('');
+  const [locationFilter, setLocationFilter] = useState('');
+  const [enclosures, setEnclosures] = useState([]);
+
+  // Fetch enclosures for the filter dropdown
   useEffect(() => {
-    const fetchInitialData = async () => {
-      setLoading(true);
-      // Fetch all for stats - this could be optimized further with a separate stats doc
-      const allAnimalsSnapshot = await getDocs(collection(db, 'animals'));
-      const allAnimalsList = allAnimalsSnapshot.docs.map(doc => doc.data());
-      setAllAnimals(allAnimalsList);
-
-      // Fetch first page
-      const firstPageQuery = query(collection(db, 'animals'), orderBy('nom'), limit(PAGE_SIZE));
-      const documentSnapshots = await getDocs(firstPageQuery);
-
-      const firstPageAnimals = documentSnapshots.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      setPaginatedAnimals(firstPageAnimals);
-
-      const lastDoc = documentSnapshots.docs[documentSnapshots.docs.length - 1];
-      setLastVisible(lastDoc);
-
-      if (documentSnapshots.docs.length < PAGE_SIZE) {
-        setHasMore(false);
-      }
-
-      setLoading(false);
+    const fetchEnclosures = async () => {
+      const snapshot = await getDocs(collection(db, 'enclos'));
+      const enclosureList = snapshot.docs.map(d => d.data().name);
+      setEnclosures(enclosureList);
     };
-    fetchInitialData();
+    fetchEnclosures();
   }, []);
 
-  const handleLoadMore = async () => {
-    if (!hasMore) return;
-    setLoadingMore(true);
+  const buildQuery = (isPaginating = false) => {
+    let q = query(collection(db, 'animals'), orderBy('nom'));
 
-    const nextPageQuery = query(
-      collection(db, 'animals'),
-      orderBy('nom'),
-      startAfter(lastVisible),
-      limit(PAGE_SIZE)
-    );
+    // Apply filters
+    // Note: Firestore requires creating composite indexes for these queries.
+    // The console will provide a link to create them automatically upon the first query failure.
+    if (speciesFilter) q = query(q, where('espece', '==', speciesFilter));
+    if (statusFilter) q = query(q, where('statut', '==', statusFilter));
+    if (locationFilter) q = query(q, where('currentLocation', '==', locationFilter));
 
-    const documentSnapshots = await getDocs(nextPageQuery);
-    const newAnimals = documentSnapshots.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-    setPaginatedAnimals(prevAnimals => [...prevAnimals, ...newAnimals]);
+    // Apply pagination
+    if (isPaginating && lastVisible) {
+      q = query(q, startAfter(lastVisible));
+    }
+    q = query(q, limit(PAGE_SIZE));
+    return q;
+  };
+
+  const fetchAnimals = async (isPaginating = false) => {
+    if (isPaginating) setLoadingMore(true);
+    else setLoading(true);
+
+    const q = buildQuery(isPaginating);
+    const documentSnapshots = await getDocs(q);
+
+    let newAnimals = documentSnapshots.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+
+    // Client-side search term filtering
+    if (searchTerm) {
+      newAnimals = newAnimals.filter(animal =>
+        animal.nom.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+    }
+
+    if (isPaginating) {
+      setPaginatedAnimals(prev => [...prev, ...newAnimals]);
+    } else {
+      setPaginatedAnimals(newAnimals);
+    }
 
     const lastDoc = documentSnapshots.docs[documentSnapshots.docs.length - 1];
     setLastVisible(lastDoc);
+    setHasMore(documentSnapshots.docs.length === PAGE_SIZE);
 
-    if (documentSnapshots.docs.length < PAGE_SIZE) {
-      setHasMore(false);
-    }
-    setLoadingMore(false);
+    if (isPaginating) setLoadingMore(false);
+    else setLoading(false);
+  };
+
+  // Fetch stats once on mount
+  useEffect(() => {
+    const fetchAllForStats = async () => {
+      const allAnimalsSnapshot = await getDocs(collection(db, 'animals'));
+      const allAnimalsList = allAnimalsSnapshot.docs.map(doc => doc.data());
+      setAllAnimals(allAnimalsList);
+    };
+    fetchAllForStats();
+  }, []);
+
+  // Refetch animals when filters change
+  useEffect(() => {
+    fetchAnimals();
+  }, [speciesFilter, statusFilter, locationFilter]);
+
+  // Debounced search term effect
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      fetchAnimals();
+    }, 500); // 500ms delay
+    return () => clearTimeout(handler);
+  }, [searchTerm]);
+
+  const handleLoadMore = () => {
+    fetchAnimals(true);
   };
 
   const stats = useMemo(() => {
@@ -107,7 +149,37 @@ const HomePage = () => {
         ))}
       </div>
 
-      <hr />
+      <div className="card" style={{display: 'flex', flexWrap: 'wrap', gap: '2rem', marginBottom: '2rem'}}>
+        <div style={{flex: 1, minWidth: '300px'}}><SpeciesPieChart animals={allAnimals} /></div>
+        <div style={{flex: 1, minWidth: '400px'}}><BirthsBarChart animals={allAnimals} /></div>
+      </div>
+
+      <div className="card">
+        <h3>Filtres et Recherche</h3>
+        <div style={{display: 'flex', gap: '1rem', flexWrap: 'wrap'}}>
+          <input
+            type="text"
+            placeholder="Rechercher par nom..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            style={{flex: 1}}
+          />
+          <select value={speciesFilter} onChange={(e) => setSpeciesFilter(e.target.value)}>
+            <option value="">Toutes les espèces</option>
+            {[...new Set(allAnimals.map(a => a.espece))].map(s => <option key={s} value={s}>{s}</option>)}
+          </select>
+          <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
+            <option value="">Tous les statuts</option>
+            <option value="Présent">Présent</option>
+            <option value="Vendu">Vendu</option>
+            <option value="Décédé">Décédé</option>
+          </select>
+          <select value={locationFilter} onChange={(e) => setLocationFilter(e.target.value)}>
+            <option value="">Tous les enclos</option>
+            {enclosures.map(e => <option key={e} value={e}>{e}</option>)}
+          </select>
+        </div>
+      </div>
 
       <h2>Liste des Animaux</h2>
       {paginatedAnimals.length === 0 ? (

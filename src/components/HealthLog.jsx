@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { collection, addDoc, query, orderBy, limit, getDocs, startAfter } from 'firebase/firestore';
 import { db } from '../firebaseConfig';
+import Papa from 'papaparse';
 
 const PAGE_SIZE = 5;
 
@@ -99,6 +100,36 @@ const HealthLog = ({ animalId }) => {
     }
   };
 
+  const handleExportCSV = async () => {
+    // 1. Fetch all logs for this animal
+    const allLogsQuery = query(healthLogsCollectionRef, orderBy('date', 'desc'));
+    const snapshot = await getDocs(allLogsQuery);
+    const allLogs = snapshot.docs.map(d => {
+      const data = d.data();
+      return {
+        date: data.date.toDate().toLocaleDateString(),
+        type: data.type,
+        description: data.description,
+        traitement: data.traitement,
+        date_rappel: data.reminderDate ? data.reminderDate.toDate().toLocaleDateString() : ''
+      }
+    });
+
+    // 2. Convert to CSV
+    const csv = Papa.unparse(allLogs);
+
+    // 3. Trigger download
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', `historique_sante_${animalId}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   return (
     <div style={{ marginTop: '2rem', borderTop: '1px solid #ddd', paddingTop: '1rem' }}>
       <h3>Suivi de Santé</h3>
@@ -122,7 +153,10 @@ const HealthLog = ({ animalId }) => {
         <button type="submit">Ajouter</button>
       </form>
 
-      <h4>Historique</h4>
+      <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
+        <h4>Historique</h4>
+        <button onClick={handleExportCSV}>Exporter en CSV</button>
+      </div>
       {loading ? <p>Chargement...</p> : (
         logs.length === 0
           ? <p>Aucun événement de santé enregistré.</p>
