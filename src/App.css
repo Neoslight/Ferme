@@ -1,0 +1,66 @@
+/* Main App Layout Styling */
+
+#root {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 1rem;
+  text-align: center;
+}
+
+nav {
+  background-color: var(--white);
+  padding: 1rem 2rem;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  margin-bottom: 2rem;
+}
+
+nav ul {
+  list-style-type: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  justify-content: center;
+  gap: 2rem;
+}
+
+nav a {
+  font-weight: 500;
+  font-size: 1.1rem;
+}
+
+main {
+  text-align: left;
+}
+
+h1, h2, h3 {
+  color: var(--primary-dark);
+}
+
+/* Card utility class */
+.card {
+  background: var(--white);
+  padding: 1.5rem;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  margin-bottom: 1rem;
+}
+
+/* Animal List Styling */
+.animal-list {
+  list-style-type: none;
+  padding: 0;
+}
+
+.animal-list-item {
+  display: block;
+  padding: 1rem;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  margin-bottom: 0.5rem;
+  transition: background-color 0.2s;
+}
+
+.animal-list-item:hover {
+  background-color: #e8f5e9; /* A light green */
+}
