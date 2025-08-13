@@ -12,7 +12,8 @@ const AddAnimalPage = () => {
     sexe: 'Mâle',
     statut: 'Présent',
     origine: 'Achat',
-    origineDetails: ''
+    origineDetails: '',
+    caractere: ''
   });
   const navigate = useNavigate();
 
@@ -39,6 +40,7 @@ const AddAnimalPage = () => {
         nom: formData.nom,
         espece: formData.espece,
         race: formData.race,
+        caractere: formData.caractere,
         dateDeNaissance: formData.dateDeNaissance ? new Date(formData.dateDeNaissance) : null,
         sexe: formData.sexe,
         statut: 'Présent',
@@ -77,6 +79,10 @@ const AddAnimalPage = () => {
         <p>
           <label>Race: </label>
           <input type="text" name="race" value={formData.race} onChange={handleChange} />
+        </p>
+        <p>
+          <label>Caractère: </label>
+          <input type="text" name="caractere" value={formData.caractere} onChange={handleChange} placeholder="Ex: Docile, craintif..."/>
         </p>
         <p>
           <label>Date de naissance: </label>

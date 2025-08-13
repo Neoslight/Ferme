@@ -70,6 +70,10 @@ const EditAnimalPage = () => {
           <input type="text" name="race" value={formData.race} onChange={handleChange} />
         </p>
         <p>
+          <label>Caractère: </label>
+          <input type="text" name="caractere" value={formData.caractere || ''} onChange={handleChange} placeholder="Ex: Docile, craintif..."/>
+        </p>
+        <p>
           <label>Date de naissance: </label>
           <input type="date" name="dateDeNaissance" value={formData.dateDeNaissance} onChange={handleChange} />
         </p>

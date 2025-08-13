@@ -5,6 +5,7 @@ import { db } from '../firebaseConfig';
 import HealthLog from '../components/HealthLog';
 import MovementLog from '../components/MovementLog';
 import LifeEventsLog from '../components/LifeEventsLog';
+import ReproductionLog from '../components/ReproductionLog';
 
 const AnimalDetailPage = () => {
   const { id } = useParams();
@@ -56,24 +57,36 @@ const AnimalDetailPage = () => {
 
   return (
     <div>
-      <div className="card" style={{ marginBottom: '2rem' }}>
-        <h1>Profil de {animal.nom}</h1>
+      <div className="card printable-area" style={{ marginBottom: '2rem' }}>
+        <h1>Fiche d'Identité : {animal.nom}</h1>
+        {/* We would add a photo here, e.g., <img src={animal.photoURL} alt={animal.nom} /> */}
         <p><strong>Espèce:</strong> {animal.espece}</p>
         <p><strong>Race:</strong> {animal.race}</p>
+        <p><strong>Caractère:</strong> {animal.caractere || 'Non renseigné'}</p>
         <p><strong>Sexe:</strong> {animal.sexe}</p>
         <p><strong>Date de naissance:</strong> {animal.dateDeNaissance ? new Date(animal.dateDeNaissance.seconds * 1000).toLocaleDateString() : 'Inconnue'}</p>
         <p><strong>Statut:</strong> {animal.statut}</p>
         <p><strong>Localisation Actuelle:</strong> {animal.currentLocation || 'Non définie'}</p>
 
-        <div style={{ marginTop: '1.5rem' }}>
+        {animal.estimatedDueDate && (
+          <div style={{ marginTop: '1rem', padding: '1rem', backgroundColor: '#fffbe6', border: '1px solid #ffe58f', borderRadius: '8px' }}>
+            <p style={{ margin: 0, fontWeight: 'bold', color: '#d46b08' }}>
+              Mise bas estimée le: {new Date(animal.estimatedDueDate.seconds * 1000).toLocaleDateString()}
+            </p>
+          </div>
+        )}
+
+        <div className="no-print" style={{ marginTop: '1.5rem' }}>
           <ActionButton to={`/animal/${id}/edit`}>Modifier</ActionButton>
           <DangerButton onClick={handleDelete}>Supprimer</DangerButton>
+          <button onClick={() => window.print()} style={{ marginLeft: '1rem' }}>Imprimer la fiche</button>
         </div>
       </div>
 
-      <div className="card"><HealthLog animalId={id} /></div>
-      <div className="card"><MovementLog animalId={id} currentAnimalData={animal} /></div>
-      <div className="card"><LifeEventsLog animalId={id} /></div>
+      <div className="card no-print"><HealthLog animalId={id} /></div>
+      <div className="card no-print"><MovementLog animalId={id} currentAnimalData={animal} /></div>
+      <div className="card no-print"><LifeEventsLog animalId={id} /></div>
+      <div className="card no-print"><ReproductionLog animal={animal} /></div>
     </div>
   );
 };

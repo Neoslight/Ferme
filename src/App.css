@@ -64,3 +64,39 @@ h1, h2, h3 {
 .animal-list-item:hover {
   background-color: #e8f5e9; /* A light green */
 }
+
+/* Print Styles */
+@media print {
+  /* Hide everything by default */
+  body * {
+    visibility: hidden;
+  }
+
+  /* Make the printable area and its children visible */
+  .printable-area, .printable-area * {
+    visibility: visible;
+  }
+
+  .no-print {
+    display: none !important;
+  }
+
+  /* Position the printable area at the top of the page */
+  .printable-area {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    border: none;
+    box-shadow: none;
+    padding: 0;
+  }
+
+  h1 {
+    font-size: 24pt;
+  }
+
+  p {
+    font-size: 12pt;
+  }
+}
