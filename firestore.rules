@@ -48,6 +48,11 @@ service cloud.firestore {
       }
     }
 
+    // Dashboard collection
+    match /dashboard/{docId} {
+      allow read: if isAuthenticated();
+    }
+
     // Global collections
     match /enclos/{encloId} {
       allow read, create, update, delete: if isAuthenticated();
