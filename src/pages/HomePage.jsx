@@ -103,7 +103,7 @@ const HomePage = () => {
           />
           <select name="speciesFilter" value={filters.speciesFilter} onChange={handleFilterChange}>
             <option value="">Toutes les espèces</option>
-            {[...new Set(allAnimals?.map(a => a.espece) ?? [])].map(s => <option key={s} value={s}>{s}</option>)}
+            {[...new Set(animals?.map(a => a.espece) ?? [])].map(s => <option key={s} value={s}>{s}</option>)}
           </select>
           <select name="statusFilter" value={filters.statusFilter} onChange={handleFilterChange}>
             <option value="">Tous les statuts</option>
