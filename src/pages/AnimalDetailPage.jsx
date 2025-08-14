@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { doc, getDoc, deleteDoc, onSnapshot, collection } from 'firebase/firestore';
 import { db } from '../firebaseConfig';
@@ -10,21 +10,21 @@ import ReproductionLog from '../components/ReproductionLog';
 import CostsLog from '../components/CostsLog';
 import RevenuesLog from '../components/RevenuesLog';
 
+import useAnimalStore from '../stores/animalStore';
+
 const AnimalDetailPage = () => {
   const { id } = useParams();
   const navigate = useNavigate();
-  const [animal, setAnimal] = useState(null);
-  const [assignedRation, setAssignedRation] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const { animal, loading, setAnimal, clearAnimal } = useAnimalStore();
+  const [assignedRation, setAssignedRation] = useState(null); // Keep this local as it's derived state
 
   useEffect(() => {
-    setLoading(true);
     const animalDocRef = doc(db, 'animals', id);
 
     const unsubscribe = onSnapshot(animalDocRef, async (animalDoc) => {
       if (animalDoc.exists()) {
         const animalData = { id: animalDoc.id, ...animalDoc.data() };
-        setAnimal(animalData);
+        setAnimal(animalData); // Set data in the global store
 
         if (animalData.rationId) {
           const rationDocRef = doc(db, 'rations', animalData.rationId);
@@ -37,15 +37,18 @@ const AnimalDetailPage = () => {
         }
       } else {
         console.log("No such document!");
+        clearAnimal();
       }
-      setLoading(false);
     }, (error) => {
       console.error("Error with onSnapshot: ", error);
-      setLoading(false);
     });
 
-    return () => unsubscribe();
-  }, [id]);
+    // On component unmount, clear the global state
+    return () => {
+      unsubscribe();
+      clearAnimal();
+    };
+  }, [id, setAnimal, clearAnimal]);
 
   const handleDelete = async () => {
     if (window.confirm(`Êtes-vous sûr de vouloir supprimer ${animal.nom} ?`)) {
@@ -106,7 +109,7 @@ const AnimalDetailPage = () => {
       </div>
 
       <div className="card no-print"><HealthLog animalId={id} /></div>
-      <div className="card no-print"><MovementLog animalId={id} currentAnimalData={animal} /></div>
+      <div className="card no-print"><MovementLog animalId={id} /></div>
       <div className="card no-print"><LifeEventsLog animalId={id} /></div>
       <div className="card no-print"><ReproductionLog animal={animal} /></div>
       <div className="card no-print">

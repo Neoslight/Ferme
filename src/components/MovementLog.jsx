@@ -1,16 +1,18 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { collection, addDoc, getDocs, query, orderBy, doc, writeBatch, limit, startAfter } from 'firebase/firestore';
 import { db } from '../firebaseConfig';
+import useAnimalStore from '../stores/animalStore';
 
 const PAGE_SIZE = 5;
 
-const MovementLog = ({ animalId, currentAnimalData }) => {
+const MovementLog = ({ animalId }) => {
   const [logs, setLogs] = useState([]);
   const [lastVisible, setLastVisible] = useState(null);
   const [hasMore, setHasMore] = useState(true);
   const [enclosures, setEnclosures] = useState([]);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
+  const { animal, updateAnimal } = useAnimalStore();
   const [formData, setFormData] = useState({
     date: new Date().toISOString().split('T')[0],
     toLocation: '',
@@ -19,7 +21,6 @@ const MovementLog = ({ animalId, currentAnimalData }) => {
 
   const movementLogsCollectionRef = collection(db, 'animals', animalId, 'movement_logs');
   const enclosuresCollectionRef = collection(db, 'enclos');
-  const animalDocRef = doc(db, 'animals', animalId);
 
   // Fetch enclosures once, as they don't change often
   useEffect(() => {
@@ -90,12 +91,13 @@ const MovementLog = ({ animalId, currentAnimalData }) => {
 
     try {
       const batch = writeBatch(db);
+      const animalDocRef = doc(db, 'animals', animalId);
 
       // 1. Add new movement log
       const newLogRef = doc(movementLogsCollectionRef);
       batch.set(newLogRef, {
         date: new Date(formData.date),
-        fromLocation: currentAnimalData.currentLocation || 'Inconnue',
+        fromLocation: animal.currentLocation || 'Inconnue',
         toLocation: formData.toLocation,
         reason: formData.reason
       });
@@ -105,17 +107,16 @@ const MovementLog = ({ animalId, currentAnimalData }) => {
 
       await batch.commit();
 
-      // Reset form and refetch first page
+      // 3. Update the global state
+      updateAnimal({ currentLocation: formData.toLocation });
+
+      // Reset form and refetch first page of logs
       setFormData(prev => ({
         ...prev,
         date: new Date().toISOString().split('T')[0],
         reason: ''
       }));
       fetchLogs();
-      // Also need to tell parent to refetch animal data... this is tricky.
-      // For now, a reload is the simplest way to ensure the "current location" is updated.
-      window.location.reload();
-
     } catch (error) {
       console.error("Error logging movement: ", error);
       alert("Erreur lors de l'enregistrement du déplacement.");
@@ -125,7 +126,7 @@ const MovementLog = ({ animalId, currentAnimalData }) => {
   return (
     <div style={{ marginTop: '2rem', borderTop: '1px solid #ddd', paddingTop: '1rem' }}>
       <h3>Déplacements et Localisation</h3>
-      <p><strong>Localisation Actuelle:</strong> {currentAnimalData.currentLocation || 'Non définie'}</p>
+      <p><strong>Localisation Actuelle:</strong> {animal?.currentLocation || 'Non définie'}</p>
 
       <h4>Enregistrer un déplacement</h4>
       <form onSubmit={handleSubmit}>

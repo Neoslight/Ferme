@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { collection, addDoc, query, orderBy, doc, writeBatch, limit, getDocs, startAfter } from 'firebase/firestore';
 import { db } from '../firebaseConfig';
+import useAnimalStore from '../stores/animalStore';
 
 const PAGE_SIZE = 5;
 
@@ -10,6 +11,7 @@ const LifeEventsLog = ({ animalId }) => {
   const [hasMore, setHasMore] = useState(true);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
+  const { updateAnimal } = useAnimalStore();
   const [formData, setFormData] = useState({
     date: new Date().toISOString().split('T')[0],
     type: 'Vente',
@@ -92,8 +94,8 @@ const LifeEventsLog = ({ animalId }) => {
         details: ''
       });
       fetchLogs();
-      // A reload is still needed here to update the parent component's status display
-      window.location.reload();
+      // 3. Update the global state
+      updateAnimal({ statut: newStatus });
 
     } catch (error) {
       console.error("Error logging life event: ", error);
