@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { collection, getDocs, addDoc, doc, updateDoc, query, where, orderBy } from 'firebase/firestore';
 import { db } from '../firebaseConfig';
+import { FiCheckSquare } from 'react-icons/fi';
 
 const TodoList = () => {
   const [tasks, setTasks] = useState([]);
@@ -56,15 +57,17 @@ const TodoList = () => {
       <form onSubmit={handleSubmit}>
         <input type="text" name="description" value={formData.description} onChange={handleChange} placeholder="Nouvelle tâche..." required />
         <input type="date" name="dueDate" value={formData.dueDate} onChange={handleChange} />
-        <button type="submit">Ajouter Tâche</button>
+        <button type="submit" className="btn btn-primary">Ajouter Tâche</button>
       </form>
       {loading ? <p>Chargement...</p> : (
         <ul>
           {tasks.map(task => (
-            <li key={task.id}>
-              {task.description}
-              {task.dueDate && <span> - Échéance: {task.dueDate.toDate().toLocaleDateString()}</span>}
-              <button onClick={() => handleMarkComplete(task.id)}>Terminé</button>
+            <li key={task.id} style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem'}}>
+              <span>
+                {task.description}
+                {task.dueDate && <em style={{marginLeft: '1rem', fontSize: '0.8rem'}}> - Échéance: {task.dueDate.toDate().toLocaleDateString()}</em>}
+              </span>
+              <button className="btn btn-secondary" title="Marquer comme terminé" onClick={() => handleMarkComplete(task.id)}><FiCheckSquare /></button>
             </li>
           ))}
         </ul>

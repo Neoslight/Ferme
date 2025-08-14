@@ -1,21 +1,27 @@
-/* Global Styles & CSS Variables */
-:root {
-  --primary-color: #4CAF50; /* Green */
-  --primary-dark: #388E3C;
-  --secondary-color: #FFC107; /* Amber */
-  --text-color: #333;
-  --light-gray: #f4f4f4;
-  --border-color: #ddd;
-  --white: #fff;
-  --danger-color: #D32F2F;
+/* === Redesign "Carnet de Ferme" === */
 
-  font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
-  line-height: 1.5;
+:root {
+  /* Palette de Couleurs */
+  --bg-main: #FDFBF5;         /* Fond Principal: Blanc cassé/Beige */
+  --bg-card: #F5F5F0;         /* Fonds Secondaires: Gris chaud */
+  --text-main: #333333;       /* Texte Principal: Gris ardoise */
+  --accent-positive: #4A6A55; /* Vert forêt */
+  --accent-danger: #C85D4A;   /* Terre cuite */
+  --accent-info: #6A8D9B;     /* Bleu ardoise */
+  --border-color: #E0E0D8;    /* Bordure douce */
+  --white: #fff;
+
+  /* Typographie */
+  --font-body: 'Lato', sans-serif;
+  --font-title: 'Merriweather', serif;
+
+  font-family: var(--font-body);
+  line-height: 1.6;
   font-weight: 400;
 
   color-scheme: light;
-  color: var(--text-color);
-  background-color: var(--white);
+  color: var(--text-main);
+  background-color: var(--bg-main);
 
   font-synthesis: none;
   text-rendering: optimizeLegibility;
@@ -25,17 +31,23 @@
 
 body {
   margin: 0;
-  background-color: var(--light-gray);
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-title);
+  color: var(--accent-positive);
 }
 
 a {
-  color: var(--primary-color);
+  color: var(--accent-info);
   text-decoration: none;
+  font-weight: 700;
 }
 a:hover {
-  color: var(--primary-dark);
+  text-decoration: underline;
 }
 
+/* Base button style */
 button {
   border-radius: 8px;
   border: 1px solid transparent;
@@ -43,25 +55,16 @@ button {
   font-size: 1em;
   font-weight: 500;
   font-family: inherit;
-  background-color: var(--primary-color);
-  color: var(--white);
   cursor: pointer;
-  transition: border-color 0.25s, background-color 0.25s;
-}
-button:hover {
-  background-color: var(--primary-dark);
-}
-button:focus,
-button:focus-visible {
-  outline: 4px auto -webkit-focus-ring-color;
+  transition: all 0.25s;
 }
 
-/* General form styling */
+/* Form styling */
 form {
-  background: var(--white);
+  background: var(--bg-main);
   padding: 1.5rem;
   border-radius: 8px;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  border: 1px solid var(--border-color);
 }
 
 form p {
@@ -73,16 +76,13 @@ form p {
 
 input[type="text"],
 input[type="date"],
+input[type="number"],
 textarea,
 select {
   width: 100%;
   padding: 0.8em;
   border: 1px solid var(--border-color);
   border-radius: 4px;
-  box-sizing: border-box; /* Important for width: 100% */
-}
-
-textarea {
-  min-height: 80px;
-  resize: vertical;
+  box-sizing: border-box;
+  background-color: var(--white);
 }

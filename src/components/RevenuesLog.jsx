@@ -97,7 +97,7 @@ const RevenuesLog = ({ animalId }) => {
         <p><label>Date:</label><input type="date" name="date" value={formData.date} onChange={handleChange} required /></p>
         <p><label>Description:</label><input type="text" name="description" value={formData.description} onChange={handleChange} required /></p>
         <p><label>Montant (€):</label><input type="number" step="0.01" name="amount" value={formData.amount} onChange={handleChange} required /></p>
-        <button type="submit">Ajouter Revenu</button>
+        <button type="submit" className="btn btn-primary">Ajouter Revenu</button>
       </form>
 
       <h5 style={{marginTop: '2rem'}}>Historique des Revenus</h5>

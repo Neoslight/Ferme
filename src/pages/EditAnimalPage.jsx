@@ -162,7 +162,7 @@ const EditAnimalPage = () => {
             ))}
           </select>
         </p>
-        <button type="submit">Mettre à jour les informations</button>
+        <button type="submit" className="btn btn-primary">Mettre à jour les informations</button>
       </form>
     </div>
   );

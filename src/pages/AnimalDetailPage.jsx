@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { doc, getDoc, deleteDoc, onSnapshot, collection } from 'firebase/firestore';
 import { db } from '../firebaseConfig';
+import { FiEdit, FiTrash2, FiPrinter } from 'react-icons/fi';
 import HealthLog from '../components/HealthLog';
 import MovementLog from '../components/MovementLog';
 import LifeEventsLog from '../components/LifeEventsLog';
@@ -66,9 +67,6 @@ const AnimalDetailPage = () => {
     return <p>Animal non trouvé.</p>;
   }
 
-  const ActionButton = ({ to, children }) => <Link to={to} style={{ marginRight: '1rem' }}><button>{children}</button></Link>;
-  const DangerButton = ({ onClick, children }) => <button onClick={onClick} style={{ backgroundColor: 'var(--danger-color)' }}>{children}</button>;
-
   return (
     <div>
       <div className="card printable-area" style={{ marginBottom: '2rem' }}>
@@ -83,27 +81,27 @@ const AnimalDetailPage = () => {
         <p><strong>Sexe:</strong> {animal.sexe}</p>
         <p><strong>Date de naissance:</strong> {animal.dateDeNaissance ? new Date(animal.dateDeNaissance.seconds * 1000).toLocaleDateString() : 'Inconnue'}</p>
         <p><strong>Statut:</strong> {animal.statut}</p>
-        <p><strong>Localisation Actuelle:</strong> {animal.currentLocation || 'Non définie'}</p>
+        <p><strong>Localisation Actuelle:</strong> {animal.currentLocation || 'Non renseigné'}</p>
 
         {assignedRation && (
-           <div style={{ marginTop: '1rem', padding: '1rem', backgroundColor: '#e6f7ff', border: '1px solid #91d5ff', borderRadius: '8px' }}>
-            <p style={{ margin: 0, fontWeight: 'bold' }}>Ration: {assignedRation.name}</p>
+           <div style={{ marginTop: '1rem', padding: '1rem', backgroundColor: 'var(--bg-main)', border: '1px solid var(--border-color)', borderRadius: '8px' }}>
+            <p style={{ margin: 0, fontFamily: 'var(--font-title)' }}>Ration: {assignedRation.name}</p>
             <p style={{ margin: 0 }}>{assignedRation.description}</p>
           </div>
         )}
 
         {animal.estimatedDueDate && (
-          <div style={{ marginTop: '1rem', padding: '1rem', backgroundColor: '#fffbe6', border: '1px solid #ffe58f', borderRadius: '8px' }}>
-            <p style={{ margin: 0, fontWeight: 'bold', color: '#d46b08' }}>
+          <div style={{ marginTop: '1rem', padding: '1rem', backgroundColor: 'var(--bg-main)', border: '1px solid var(--border-color)', borderRadius: '8px' }}>
+            <p style={{ margin: 0, fontFamily: 'var(--font-title)' }}>
               Mise bas estimée le: {new Date(animal.estimatedDueDate.seconds * 1000).toLocaleDateString()}
             </p>
           </div>
         )}
 
-        <div className="no-print" style={{ marginTop: '1.5rem' }}>
-          <ActionButton to={`/animal/${id}/edit`}>Modifier</ActionButton>
-          <DangerButton onClick={handleDelete}>Supprimer</DangerButton>
-          <button onClick={() => window.print()} style={{ marginLeft: '1rem' }}>Imprimer la fiche</button>
+        <div className="no-print" style={{ marginTop: '1.5rem', display: 'flex', gap: '1rem' }}>
+          <Link to={`/animal/${id}/edit`}><button className="btn btn-primary" style={{display: 'flex', alignItems: 'center', gap: '0.5rem'}}><FiEdit /> Modifier</button></Link>
+          <button onClick={handleDelete} className="btn btn-danger" style={{display: 'flex', alignItems: 'center', gap: '0.5rem'}}><FiTrash2 /> Supprimer</button>
+          <button onClick={() => window.print()} className="btn btn-secondary" style={{display: 'flex', alignItems: 'center', gap: '0.5rem'}}><FiPrinter /> Imprimer la fiche</button>
         </div>
       </div>
 

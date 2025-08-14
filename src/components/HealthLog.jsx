@@ -150,7 +150,7 @@ const HealthLog = ({ animalId }) => {
         <p><label>Description: </label><textarea name="description" value={formData.description} onChange={handleChange} required></textarea></p>
         <p><label>Traitement: </label><input type="text" name="traitement" value={formData.traitement} onChange={handleChange} /></p>
         <p><label>Date de rappel (Optionnel):</label><input type="date" name="reminderDate" value={formData.reminderDate} onChange={handleChange} /></p>
-        <button type="submit">Ajouter</button>
+        <button type="submit" className="btn btn-primary">Ajouter</button>
       </form>
 
       <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>

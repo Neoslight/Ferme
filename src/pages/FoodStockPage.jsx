@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { collection, getDocs, addDoc, doc, updateDoc, deleteDoc } from 'firebase/firestore';
 import { db } from '../firebaseConfig';
+import { FiPlus, FiMinus, FiTrash2, FiPlusCircle, FiMinusCircle } from 'react-icons/fi';
 
 const FoodStockPage = () => {
   const [stock, setStock] = useState([]);
@@ -73,7 +74,7 @@ const FoodStockPage = () => {
           <input type="number" name="quantity" value={formData.quantity} onChange={handleChange} placeholder="Quantité initiale" required />
           <input type="text" name="unit" value={formData.unit} onChange={handleChange} placeholder="Unité (ex: kg, bottes)" required />
           <input type="number" name="alertThreshold" value={formData.alertThreshold} onChange={handleChange} placeholder="Seuil d'alerte" required />
-          <button type="submit">Ajouter au stock</button>
+          <button type="submit" className="btn btn-primary">Ajouter au stock</button>
         </form>
       </div>
 
@@ -98,14 +99,12 @@ const FoodStockPage = () => {
                     {item.quantity} {item.unit}
                     {isLow && ' (Stock Bas !)'}
                   </td>
-                  <td>
-                    <button onClick={() => handleUpdateQuantity(item.id, item.quantity, 1)}>+1</button>
-                    <button onClick={() => handleUpdateQuantity(item.id, item.quantity, 10)}>+10</button>
-                    <button onClick={() => handleUpdateQuantity(item.id, item.quantity, -1)}>-1</button>
-                    <button onClick={() => handleUpdateQuantity(item.id, item.quantity, -10)}>-10</button>
+                  <td style={{display: 'flex', gap: '0.5rem'}}>
+                    <button title="Ajouter 1" className="btn btn-secondary" onClick={() => handleUpdateQuantity(item.id, item.quantity, 1)}><FiPlus /></button>
+                    <button title="Retirer 1" className="btn btn-secondary" onClick={() => handleUpdateQuantity(item.id, item.quantity, -1)}><FiMinus /></button>
                   </td>
                   <td>
-                    <DangerButton onClick={() => handleDelete(item.id)}>Supprimer</DangerButton>
+                    <button className="btn btn-danger" onClick={() => handleDelete(item.id)}><FiTrash2 /></button>
                   </td>
                 </tr>
               )
@@ -116,8 +115,5 @@ const FoodStockPage = () => {
     </div>
   );
 };
-
-// A simple button component for dangerous actions
-const DangerButton = ({ onClick, children }) => <button onClick={onClick} style={{ backgroundColor: 'var(--danger-color)' }}>{children}</button>;
 
 export default FoodStockPage;

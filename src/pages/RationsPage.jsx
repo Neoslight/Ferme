@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { collection, getDocs, addDoc, doc, updateDoc, deleteDoc } from 'firebase/firestore';
 import { db } from '../firebaseConfig';
+import { FiEdit, FiTrash2 } from 'react-icons/fi';
 
 const RationsPage = () => {
   const [rations, setRations] = useState([]);
@@ -68,12 +69,17 @@ const RationsPage = () => {
 
       <h3>Rations Définies</h3>
       {loading ? <p>Chargement...</p> : (
-        <ul>
+        <ul style={{listStyle: 'none', padding: 0}}>
           {rations.map(ration => (
-            <li key={ration.id}>
-              <strong>{ration.name}</strong>: {ration.description}
-              <button onClick={() => setEditingRation(ration)}>Modifier</button>
-              <button onClick={() => handleDelete(ration.id)}>Supprimer</button>
+            <li key={ration.id} className="card" style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem'}}>
+              <div>
+                <strong>{ration.name}</strong>
+                <p style={{margin: 0}}>{ration.description}</p>
+              </div>
+              <div style={{display: 'flex', gap: '0.5rem'}}>
+                <button className="btn btn-secondary" onClick={() => setEditingRation(ration)}><FiEdit /></button>
+                <button className="btn btn-danger" onClick={() => handleDelete(ration.id)}><FiTrash2 /></button>
+              </div>
             </li>
           ))}
         </ul>

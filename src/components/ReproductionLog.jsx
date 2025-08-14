@@ -137,7 +137,7 @@ const ReproductionLog = ({ animal }) => {
           </select>
         </p>
         <p><label>Notes: </label><textarea name="notes" value={formData.notes} onChange={handleChange}></textarea></p>
-        <button type="submit">Enregistrer la saillie</button>
+        <button type="submit" className="btn btn-primary">Enregistrer la saillie</button>
       </form>
 
       <h4 style={{marginTop: '2rem'}}>Historique</h4>
