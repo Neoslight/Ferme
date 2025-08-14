@@ -1,16 +1,11 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { collection, addDoc, query, orderBy, limit, getDocs, startAfter } from 'firebase/firestore';
+import React, { useState } from 'react';
+import { collection, query, orderBy, getDocs } from 'firebase/firestore';
 import { db } from '../firebaseConfig';
 import Papa from 'papaparse';
-
-const PAGE_SIZE = 5;
+import { usePaginatedSubCollection } from '../queries/usePaginatedSubCollection';
+import { useAddSubCollectionDoc } from '../mutations/useAddSubCollectionDoc';
 
 const HealthLog = ({ animalId }) => {
-  const [logs, setLogs] = useState([]);
-  const [lastVisible, setLastVisible] = useState(null);
-  const [hasMore, setHasMore] = useState(true);
-  const [loading, setLoading] = useState(true);
-  const [loadingMore, setLoadingMore] = useState(false);
   const [formData, setFormData] = useState({
     date: new Date().toISOString().split('T')[0],
     type: 'Soin',
@@ -19,49 +14,17 @@ const HealthLog = ({ animalId }) => {
     reminderDate: ''
   });
 
-  const healthLogsCollectionRef = collection(db, 'animals', animalId, 'health_logs');
+  const {
+    data,
+    error,
+    fetchNextPage,
+    hasNextPage,
+    isFetching,
+    isFetchingNextPage,
+    isLoading,
+  } = usePaginatedSubCollection(animalId, 'health_logs');
 
-  const fetchLogs = useCallback(async () => {
-    setLoading(true);
-    const firstPageQuery = query(healthLogsCollectionRef, orderBy('date', 'desc'), limit(PAGE_SIZE));
-    const documentSnapshots = await getDocs(firstPageQuery);
-
-    const logList = documentSnapshots.docs.map(doc => ({ id: doc.id, ...doc.data(), date: doc.data().date.toDate() }));
-    setLogs(logList);
-
-    const lastDoc = documentSnapshots.docs[documentSnapshots.docs.length - 1];
-    setLastVisible(lastDoc);
-
-    if (documentSnapshots.docs.length < PAGE_SIZE) {
-      setHasMore(false);
-    } else {
-      setHasMore(true);
-    }
-    setLoading(false);
-  }, [animalId]);
-
-  useEffect(() => {
-    fetchLogs();
-  }, [fetchLogs]);
-
-  const handleLoadMore = async () => {
-    if (!hasMore) return;
-    setLoadingMore(true);
-
-    const nextPageQuery = query(healthLogsCollectionRef, orderBy('date', 'desc'), startAfter(lastVisible), limit(PAGE_SIZE));
-    const documentSnapshots = await getDocs(nextPageQuery);
-
-    const newLogs = documentSnapshots.docs.map(doc => ({ id: doc.id, ...doc.data(), date: doc.data().date.toDate() }));
-    setLogs(prevLogs => [...prevLogs, ...newLogs]);
-
-    const lastDoc = documentSnapshots.docs[documentSnapshots.docs.length - 1];
-    setLastVisible(lastDoc);
-
-    if (documentSnapshots.docs.length < PAGE_SIZE) {
-      setHasMore(false);
-    }
-    setLoadingMore(false);
-  };
+  const addHealthLogMutation = useAddSubCollectionDoc(animalId, 'health_logs');
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -74,30 +37,26 @@ const HealthLog = ({ animalId }) => {
       alert("La description est obligatoire.");
       return;
     }
-    try {
-      const newLog = {
-        date: new Date(formData.date),
-        type: formData.type,
-        description: formData.description,
-        traitement: formData.traitement,
-      };
-      if (formData.reminderDate) {
-        newLog.reminderDate = new Date(formData.reminderDate);
-      }
-      await addDoc(healthLogsCollectionRef, newLog);
-
-      setFormData({
-        date: new Date().toISOString().split('T')[0],
-        type: 'Soin',
-        description: '',
-        traitement: '',
-        reminderDate: ''
-      });
-      fetchLogs();
-    } catch (error) {
-      console.error("Error adding health log: ", error);
-      alert("Erreur lors de l'ajout de l'événement de santé.");
+    const newLog = {
+      date: new Date(formData.date),
+      type: formData.type,
+      description: formData.description,
+      traitement: formData.traitement,
+    };
+    if (formData.reminderDate) {
+      newLog.reminderDate = new Date(formData.reminderDate);
     }
+    addHealthLogMutation.mutate(newLog, {
+      onSuccess: () => {
+        setFormData({
+          date: new Date().toISOString().split('T')[0],
+          type: 'Soin',
+          description: '',
+          traitement: '',
+          reminderDate: ''
+        });
+      }
+    });
   };
 
   const handleExportCSV = async () => {
@@ -157,24 +116,28 @@ const HealthLog = ({ animalId }) => {
         <h4>Historique</h4>
         <button onClick={handleExportCSV}>Exporter en CSV</button>
       </div>
-      {loading ? <p>Chargement...</p> : (
-        logs.length === 0
+      {isLoading ? <p>Chargement...</p> : error ? <p>Erreur: {error.message}</p> : (
+        data.pages.flatMap(page => page.data).length === 0
           ? <p>Aucun événement de santé enregistré.</p>
           : (
             <>
               <ul style={{ listStyleType: 'none', padding: 0 }}>
-                {logs.map(log => (
-                  <li key={log.id} style={{ border: '1px solid #eee', padding: '0.5rem', marginBottom: '0.5rem' }}>
-                    <strong>{log.date.toLocaleDateString()} - {log.type}</strong>
-                    <p>Description: {log.description}</p>
-                    {log.traitement && <p>Traitement: {log.traitement}</p>}
-                  </li>
+                {data.pages.map((page, i) => (
+                  <React.Fragment key={i}>
+                    {page.data.map(log => (
+                      <li key={log.id} style={{ border: '1px solid #eee', padding: '0.5rem', marginBottom: '0.5rem' }}>
+                        <strong>{new Date(log.date.seconds * 1000).toLocaleDateString()} - {log.type}</strong>
+                        <p>Description: {log.description}</p>
+                        {log.traitement && <p>Traitement: {log.traitement}</p>}
+                      </li>
+                    ))}
+                  </React.Fragment>
                 ))}
               </ul>
-              {hasMore && (
+              {hasNextPage && (
                 <div style={{ textAlign: 'center', marginTop: '1rem' }}>
-                  <button onClick={handleLoadMore} disabled={loadingMore}>
-                    {loadingMore ? 'Chargement...' : 'Charger plus'}
+                  <button onClick={() => fetchNextPage()} disabled={isFetchingNextPage}>
+                    {isFetchingNextPage ? 'Chargement...' : 'Charger plus'}
                   </button>
                 </div>
               )}

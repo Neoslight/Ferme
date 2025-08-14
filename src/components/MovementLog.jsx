@@ -1,126 +1,64 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { collection, addDoc, getDocs, query, orderBy, doc, writeBatch, limit, startAfter } from 'firebase/firestore';
+import React, { useState, useEffect } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { collection, getDocs } from 'firebase/firestore';
 import { db } from '../firebaseConfig';
 import useAnimalStore from '../stores/animalStore';
-
-const PAGE_SIZE = 5;
+import { usePaginatedSubCollection } from '../queries/usePaginatedSubCollection';
+import { useAddMovementLog } from '../mutations/useAddMovementLog';
 
 const MovementLog = ({ animalId }) => {
-  const [logs, setLogs] = useState([]);
-  const [lastVisible, setLastVisible] = useState(null);
-  const [hasMore, setHasMore] = useState(true);
-  const [enclosures, setEnclosures] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [loadingMore, setLoadingMore] = useState(false);
-  const { animal, updateAnimal } = useAnimalStore();
+  const { animal } = useAnimalStore();
   const [formData, setFormData] = useState({
     date: new Date().toISOString().split('T')[0],
     toLocation: '',
     reason: ''
   });
 
-  const movementLogsCollectionRef = collection(db, 'animals', animalId, 'movement_logs');
-  const enclosuresCollectionRef = collection(db, 'enclos');
-
-  // Fetch enclosures once, as they don't change often
-  useEffect(() => {
-    const fetchEnclosures = async () => {
-      const enclosureSnapshot = await getDocs(enclosuresCollectionRef);
-      const enclosureList = enclosureSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      setEnclosures(enclosureList);
-      if (enclosureList.length > 0) {
-        setFormData(prev => ({ ...prev, toLocation: enclosureList[0].name }));
-      }
-    };
-    fetchEnclosures();
-  }, []);
-
-  const fetchLogs = useCallback(async () => {
-    setLoading(true);
-    const firstPageQuery = query(movementLogsCollectionRef, orderBy('date', 'desc'), limit(PAGE_SIZE));
-    const documentSnapshots = await getDocs(firstPageQuery);
-
-    const logList = documentSnapshots.docs.map(doc => ({ id: doc.id, ...doc.data(), date: doc.data().date.toDate() }));
-    setLogs(logList);
-
-    const lastDoc = documentSnapshots.docs[documentSnapshots.docs.length - 1];
-    setLastVisible(lastDoc);
-
-    if (documentSnapshots.docs.length < PAGE_SIZE) {
-      setHasMore(false);
-    } else {
-      setHasMore(true);
+  const { data: enclosuresData } = useQuery({
+    queryKey: ['enclosures'],
+    queryFn: async () => {
+      const snapshot = await getDocs(collection(db, 'enclos'));
+      return snapshot.docs.map(d => d.data().name);
     }
-    setLoading(false);
-  }, [animalId]);
+  });
 
+  // Set default destination when enclosures load
   useEffect(() => {
-    fetchLogs();
-  }, [fetchLogs]);
-
-  const handleLoadMore = async () => {
-    if (!hasMore) return;
-    setLoadingMore(true);
-
-    const nextPageQuery = query(movementLogsCollectionRef, orderBy('date', 'desc'), startAfter(lastVisible), limit(PAGE_SIZE));
-    const documentSnapshots = await getDocs(nextPageQuery);
-
-    const newLogs = documentSnapshots.docs.map(doc => ({ id: doc.id, ...doc.data(), date: doc.data().date.toDate() }));
-    setLogs(prevLogs => [...prevLogs, ...newLogs]);
-
-    const lastDoc = documentSnapshots.docs[documentSnapshots.docs.length - 1];
-    setLastVisible(lastDoc);
-
-    if (documentSnapshots.docs.length < PAGE_SIZE) {
-      setHasMore(false);
+    if (enclosuresData && enclosuresData.length > 0) {
+      setFormData(prev => ({ ...prev, toLocation: enclosuresData[0] }));
     }
-    setLoadingMore(false);
-  };
+  }, [enclosuresData]);
+
+  const {
+    data,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+    isLoading
+  } = usePaginatedSubCollection(animalId, 'movement_logs');
+
+  const addMovementLogMutation = useAddMovementLog(animalId);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData(prevState => ({ ...prevState, [name]: value }));
   };
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = (e) => {
     e.preventDefault();
-    if (!formData.toLocation) {
-      alert("Veuillez sélectionner une destination.");
-      return;
-    }
-
-    try {
-      const batch = writeBatch(db);
-      const animalDocRef = doc(db, 'animals', animalId);
-
-      // 1. Add new movement log
-      const newLogRef = doc(movementLogsCollectionRef);
-      batch.set(newLogRef, {
-        date: new Date(formData.date),
-        fromLocation: animal.currentLocation || 'Inconnue',
-        toLocation: formData.toLocation,
-        reason: formData.reason
-      });
-
-      // 2. Update the animal's current location on the parent doc
-      batch.update(animalDocRef, { currentLocation: formData.toLocation });
-
-      await batch.commit();
-
-      // 3. Update the global state
-      updateAnimal({ currentLocation: formData.toLocation });
-
-      // Reset form and refetch first page of logs
-      setFormData(prev => ({
-        ...prev,
-        date: new Date().toISOString().split('T')[0],
-        reason: ''
-      }));
-      fetchLogs();
-    } catch (error) {
-      console.error("Error logging movement: ", error);
-      alert("Erreur lors de l'enregistrement du déplacement.");
-    }
+    if (!formData.toLocation) return;
+    addMovementLogMutation.mutate({
+      fromLocation: animal.currentLocation || 'Inconnue',
+      ...formData
+    }, {
+      onSuccess: () => {
+        setFormData({
+          date: new Date().toISOString().split('T')[0],
+          toLocation: enclosuresData[0] || '',
+          reason: ''
+        });
+      }
+    });
   };
 
   return (
@@ -134,31 +72,37 @@ const MovementLog = ({ animalId }) => {
         <p>
           <label>Nouvel enclos: </label>
           <select name="toLocation" value={formData.toLocation} onChange={handleChange} required>
-            {enclosures.map(enclosure => (
-              <option key={enclosure.id} value={enclosure.name}>{enclosure.name}</option>
+            {enclosuresData?.map(name => (
+              <option key={name} value={name}>{name}</option>
             ))}
           </select>
         </p>
         <p><label>Raison: </label><input type="text" name="reason" value={formData.reason} onChange={handleChange} /></p>
-        <button type="submit">Enregistrer</button>
+        <button type="submit" className="btn btn-primary" disabled={addMovementLogMutation.isPending}>
+          {addMovementLogMutation.isPending ? 'Enregistrement...' : 'Enregistrer'}
+        </button>
       </form>
 
       <h4>Historique des déplacements</h4>
-      {loading ? <p>Chargement...</p> : (
-        logs.length === 0
+      {isLoading ? <p>Chargement...</p> : (
+        data.pages.flatMap(page => page.data).length === 0
           ? <p>Aucun déplacement enregistré.</p>
           : <>
             <ul>
-              {logs.map(log => (
-                <li key={log.id}>
-                  {log.date.toLocaleDateString()}: <strong>{log.fromLocation}</strong> vers <strong>{log.toLocation}</strong> ({log.reason})
-                </li>
+              {data.pages.map((page, i) => (
+                <React.Fragment key={i}>
+                  {page.data.map(log => (
+                    <li key={log.id}>
+                      {new Date(log.date.seconds * 1000).toLocaleDateString()}: <strong>{log.fromLocation}</strong> vers <strong>{log.toLocation}</strong> ({log.reason})
+                    </li>
+                  ))}
+                </React.Fragment>
               ))}
             </ul>
-            {hasMore && (
+            {hasNextPage && (
               <div style={{ textAlign: 'center', marginTop: '1rem' }}>
-                <button onClick={handleLoadMore} disabled={loadingMore}>
-                  {loadingMore ? 'Chargement...' : 'Charger plus'}
+                <button onClick={() => fetchNextPage()} disabled={isFetchingNextPage}>
+                  {isFetchingNextPage ? 'Chargement...' : 'Charger plus'}
                 </button>
               </div>
             )}

@@ -1,7 +1,9 @@
-import React, { useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { doc, getDoc, deleteDoc, onSnapshot, collection } from 'firebase/firestore';
+import { doc, getDoc, deleteDoc, collection } from 'firebase/firestore';
 import { db } from '../firebaseConfig';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useAnimal } from '../queries/useAnimal';
 import { FiEdit, FiTrash2, FiPrinter } from 'react-icons/fi';
 import HealthLog from '../components/HealthLog';
 import MovementLog from '../components/MovementLog';
@@ -10,60 +12,44 @@ import ReproductionLog from '../components/ReproductionLog';
 import CostsLog from '../components/CostsLog';
 import RevenuesLog from '../components/RevenuesLog';
 
-import useAnimalStore from '../stores/animalStore';
-
 const AnimalDetailPage = () => {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { animal, loading, setAnimal, clearAnimal } = useAnimalStore();
-  const [assignedRation, setAssignedRation] = useState(null); // Keep this local as it's derived state
+  const queryClient = useQueryClient();
 
-  useEffect(() => {
-    const animalDocRef = doc(db, 'animals', id);
+  const { data: animal, isLoading, error } = useAnimal(id);
 
-    const unsubscribe = onSnapshot(animalDocRef, async (animalDoc) => {
-      if (animalDoc.exists()) {
-        const animalData = { id: animalDoc.id, ...animalDoc.data() };
-        setAnimal(animalData); // Set data in the global store
+  // Fetch assigned ration separately
+  const { data: assignedRation } = useQuery({
+    queryKey: ['ration', animal?.rationId],
+    queryFn: async () => {
+      const rationDocRef = doc(db, 'rations', animal.rationId);
+      const rationDoc = await getDoc(rationDocRef);
+      return rationDoc.exists() ? rationDoc.data() : null;
+    },
+    enabled: !!animal?.rationId, // Only run if animal and rationId exist
+  });
 
-        if (animalData.rationId) {
-          const rationDocRef = doc(db, 'rations', animalData.rationId);
-          const rationDoc = await getDoc(rationDocRef);
-          if (rationDoc.exists()) {
-            setAssignedRation(rationDoc.data());
-          }
-        } else {
-          setAssignedRation(null);
-        }
-      } else {
-        console.log("No such document!");
-        clearAnimal();
-      }
-    }, (error) => {
-      console.error("Error with onSnapshot: ", error);
-    });
+  const deleteMutation = useMutation({
+    mutationFn: (animalId) => deleteDoc(doc(db, 'animals', animalId)),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['animals'] });
+      navigate('/');
+    }
+  });
 
-    // On component unmount, clear the global state
-    return () => {
-      unsubscribe();
-      clearAnimal();
-    };
-  }, [id, setAnimal, clearAnimal]);
-
-  const handleDelete = async () => {
+  const handleDelete = () => {
     if (window.confirm(`Êtes-vous sûr de vouloir supprimer ${animal.nom} ?`)) {
-      try {
-        await deleteDoc(doc(db, 'animals', id));
-        navigate('/');
-      } catch (error) {
-        console.error("Error removing document: ", error);
-        alert("Erreur lors de la suppression de l'animal.");
-      }
+      deleteMutation.mutate(id);
     }
   };
 
-  if (loading) {
+  if (isLoading) {
     return <p>Chargement...</p>;
+  }
+
+  if (error) {
+    return <p>Erreur: {error.message}</p>;
   }
 
   if (!animal) {

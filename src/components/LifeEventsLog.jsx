@@ -1,106 +1,67 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { collection, addDoc, query, orderBy, doc, writeBatch, limit, getDocs, startAfter } from 'firebase/firestore';
+import React, { useState } from 'react';
+import { usePaginatedSubCollection } from '../queries/usePaginatedSubCollection';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { collection, doc, writeBatch } from 'firebase/firestore';
 import { db } from '../firebaseConfig';
-import useAnimalStore from '../stores/animalStore';
 
-const PAGE_SIZE = 5;
+const addLifeEvent = async ({ animalId, formData }) => {
+  const batch = writeBatch(db);
+  const animalDocRef = doc(db, 'animals', animalId);
+  const lifeEventsCollectionRef = collection(db, 'animals', animalId, 'life_events');
+
+  const newLifeEventRef = doc(lifeEventsCollectionRef);
+  batch.set(newLifeEventRef, {
+    date: new Date(formData.date),
+    type: formData.type,
+    details: formData.details
+  });
+
+  const newStatus = formData.type === 'Vente' ? 'Vendu' : 'Décédé';
+  batch.update(animalDocRef, { statut: newStatus });
+
+  return await batch.commit();
+};
 
 const LifeEventsLog = ({ animalId }) => {
-  const [logs, setLogs] = useState([]);
-  const [lastVisible, setLastVisible] = useState(null);
-  const [hasMore, setHasMore] = useState(true);
-  const [loading, setLoading] = useState(true);
-  const [loadingMore, setLoadingMore] = useState(false);
-  const { updateAnimal } = useAnimalStore();
+  const queryClient = useQueryClient();
   const [formData, setFormData] = useState({
     date: new Date().toISOString().split('T')[0],
     type: 'Vente',
     details: ''
   });
 
-  const lifeEventsCollectionRef = collection(db, 'animals', animalId, 'life_events');
-  const animalDocRef = doc(db, 'animals', animalId);
+  const {
+    data,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+    isLoading
+  } = usePaginatedSubCollection(animalId, 'life_events');
 
-  const fetchLogs = useCallback(async () => {
-    setLoading(true);
-    const firstPageQuery = query(lifeEventsCollectionRef, orderBy('date', 'desc'), limit(PAGE_SIZE));
-    const documentSnapshots = await getDocs(firstPageQuery);
-
-    const logList = documentSnapshots.docs.map(doc => ({ id: doc.id, ...doc.data(), date: doc.data().date.toDate() }));
-    setLogs(logList);
-
-    const lastDoc = documentSnapshots.docs[documentSnapshots.docs.length - 1];
-    setLastVisible(lastDoc);
-
-    if (documentSnapshots.docs.length < PAGE_SIZE) {
-      setHasMore(false);
-    } else {
-      setHasMore(true);
+  const addLifeEventMutation = useMutation({
+    mutationFn: (formData) => addLifeEvent({ animalId, formData }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['subcollection', animalId, 'life_events'] });
+      queryClient.invalidateQueries({ queryKey: ['animal', animalId] });
     }
-    setLoading(false);
-  }, [animalId]);
-
-  useEffect(() => {
-    fetchLogs();
-  }, [fetchLogs]);
-
-  const handleLoadMore = async () => {
-    if (!hasMore) return;
-    setLoadingMore(true);
-
-    const nextPageQuery = query(lifeEventsCollectionRef, orderBy('date', 'desc'), startAfter(lastVisible), limit(PAGE_SIZE));
-    const documentSnapshots = await getDocs(nextPageQuery);
-
-    const newLogs = documentSnapshots.docs.map(doc => ({ id: doc.id, ...doc.data(), date: doc.data().date.toDate() }));
-    setLogs(prevLogs => [...prevLogs, ...newLogs]);
-
-    const lastDoc = documentSnapshots.docs[documentSnapshots.docs.length - 1];
-    setLastVisible(lastDoc);
-
-    if (documentSnapshots.docs.length < PAGE_SIZE) {
-      setHasMore(false);
-    }
-    setLoadingMore(false);
-  };
+  });
 
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData(prevState => ({ ...prevState, [name]: value }));
   };
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = (e) => {
     e.preventDefault();
-    try {
-      const batch = writeBatch(db);
-
-      // 1. Add new life event
-      const newLifeEventRef = doc(lifeEventsCollectionRef);
-      batch.set(newLifeEventRef, {
-        date: new Date(formData.date),
-        type: formData.type,
-        details: formData.details
-      });
-
-      // 2. Update the animal's status
-      const newStatus = formData.type === 'Vente' ? 'Vendu' : 'Décédé';
-      batch.update(animalDocRef, { statut: newStatus });
-
-      await batch.commit();
-
-      // Reset form and refetch first page
-      setFormData({
-        date: new Date().toISOString().split('T')[0],
-        type: 'Vente',
-        details: ''
-      });
-      fetchLogs();
-      // 3. Update the global state
-      updateAnimal({ statut: newStatus });
-
-    } catch (error) {
-      console.error("Error logging life event: ", error);
-      alert("Erreur lors de l'enregistrement de l'événement.");
-    }
+    addLifeEventMutation.mutate(formData, {
+      onSuccess: () => {
+        setFormData({
+          date: new Date().toISOString().split('T')[0],
+          type: 'Vente',
+          details: ''
+        });
+      }
+    });
   };
 
   return (
@@ -122,21 +83,25 @@ const LifeEventsLog = ({ animalId }) => {
       </form>
 
       <h4>Historique</h4>
-      {loading ? <p>Chargement...</p> : (
-        logs.length === 0
+      {isLoading ? <p>Chargement...</p> : (
+        data.pages.flatMap(page => page.data).length === 0
           ? <p>Aucun événement de vie enregistré.</p>
           : <>
             <ul>
-              {logs.map(log => (
-                <li key={log.id}>
-                  {log.date.toLocaleDateString()} - <strong>{log.type}</strong>: {log.details}
-                </li>
+              {data.pages.map((page, i) => (
+                <React.Fragment key={i}>
+                  {page.data.map(log => (
+                    <li key={log.id}>
+                      {new Date(log.date.seconds * 1000).toLocaleDateString()} - <strong>{log.type}</strong>: {log.details}
+                    </li>
+                  ))}
+                </React.Fragment>
               ))}
             </ul>
-            {hasMore && (
+            {hasNextPage && (
               <div style={{ textAlign: 'center', marginTop: '1rem' }}>
-                <button onClick={handleLoadMore} disabled={loadingMore}>
-                  {loadingMore ? 'Chargement...' : 'Charger plus'}
+                <button onClick={() => fetchNextPage()} disabled={isFetchingNextPage}>
+                  {isFetchingNextPage ? 'Chargement...' : 'Charger plus'}
                 </button>
               </div>
             )}
