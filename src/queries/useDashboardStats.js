@@ -1,31 +1,39 @@
-import { useQuery } from '@tanstack/react-query';
+import { useState, useEffect } from 'react';
 import { doc, onSnapshot } from 'firebase/firestore';
 import { db } from '../firebaseConfig';
 
 export const useDashboardStats = () => {
-  return useQuery({
-    queryKey: ['dashboard-stats'],
-    queryFn: () => new Promise((resolve, reject) => {
-      const docRef = doc(db, 'dashboard', 'stats');
-      const unsubscribe = onSnapshot(docRef,
-        (doc) => {
-          if (doc.exists()) {
-            resolve(doc.data());
-          } else {
-            // Resolve with empty stats if doc doesn't exist yet
-            resolve({ total: 0, bySpecies: {}, byStatus: {} });
-          }
-        },
-        (error) => {
-          reject(error);
+  const [data, setData] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    const docRef = doc(db, 'dashboard', 'stats');
+    const unsubscribe = onSnapshot(docRef,
+      (docSnap) => {
+        if (docSnap.exists()) {
+          setData(docSnap.data());
+        } else {
+          // Document doesn't exist, provide default stats
+          setData({
+            total: 0,
+            bySpecies: {},
+            byStatus: {},
+            birthsByMonth: {},
+          });
         }
-      );
-      // Note: React Query doesn't have a direct way to unsubscribe from a snapshot listener
-      // when the query becomes inactive. For a long-lived app, a more complex setup
-      // might be needed, but for this use case, it's acceptable.
-    }),
-    // Keep the data fresh, but don't refetch on window focus etc.
-    staleTime: Infinity,
-    refetchOnWindowFocus: false,
-  });
+        setIsLoading(false);
+      },
+      (err) => {
+        console.error("Error fetching dashboard stats:", err);
+        setError(err);
+        setIsLoading(false);
+      }
+    );
+
+    // Cleanup subscription on unmount
+    return () => unsubscribe();
+  }, []); // Empty dependency array ensures this effect runs only once
+
+  return { data, isLoading, error };
 };

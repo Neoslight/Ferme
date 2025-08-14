@@ -40,10 +40,10 @@ const HomePage = () => {
     hasNextPage,
     isFetching,
     isFetchingNextPage,
-    isLoading
+    isLoading: isLoadingAnimals
   } = useAnimals({ ...filters, searchTerm: debouncedSearchTerm });
 
-  const { data: stats } = useDashboardStats();
+  const { data: stats, isLoading: isLoadingStats, error: errorStats } = useDashboardStats();
 
   const { data: enclosures } = useQuery({
     queryKey: ['enclosures'],
@@ -60,22 +60,36 @@ const HomePage = () => {
 
   const animals = data?.pages.flatMap(page => page.data) ?? [];
 
-  if (isLoading) {
-    return <p>Chargement du tableau de bord...</p>;
+  if (isLoadingAnimals) {
+    return <p>Chargement des animaux...</p>;
   }
 
   if (error) {
-    return <p>Erreur: {error.message}</p>
+    return <p>Erreur (animaux): {error.message}</p>
+  }
+
+  const renderStats = () => {
+    if (isLoadingStats) {
+      return <p>Chargement des statistiques...</p>;
+    }
+    if (errorStats) {
+      return <p>Erreur de chargement des statistiques.</p>;
+    }
+    return (
+      <>
+        <StatCard title="Total d'animaux" value={stats?.total ?? 0} />
+        {stats?.bySpecies && Object.entries(stats.bySpecies).map(([species, count]) => (
+          <StatCard key={species} title={species} value={count} />
+        ))}
+      </>
+    );
   }
 
   return (
     <div>
       <h1>Tableau de Bord</h1>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '1rem', marginBottom: '2rem' }}>
-        <StatCard title="Total d'animaux" value={stats?.total ?? 0} />
-        {stats?.bySpecies && Object.entries(stats.bySpecies).map(([species, count]) => (
-          <StatCard key={species} title={species} value={count} />
-        ))}
+        {renderStats()}
       </div>
 
       <div style={{ marginBottom: '2rem' }}>
@@ -103,7 +117,7 @@ const HomePage = () => {
           />
           <select name="speciesFilter" value={filters.speciesFilter} onChange={handleFilterChange}>
             <option value="">Toutes les espèces</option>
-            {[...new Set(allAnimals?.map(a => a.espece) ?? [])].map(s => <option key={s} value={s}>{s}</option>)}
+            {[...new Set(animals?.map(a => a.espece) ?? [])].map(s => <option key={s} value={s}>{s}</option>)}
           </select>
           <select name="statusFilter" value={filters.statusFilter} onChange={handleFilterChange}>
             <option value="">Tous les statuts</option>
