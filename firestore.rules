@@ -1,0 +1,72 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Helper functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isIncomingData(data) {
+      return request.resource.data == data;
+    }
+
+    // ANINALS collection
+    match /animals/{animalId} {
+      allow read: if isAuthenticated();
+
+      // Validation for creating and updating an animal
+      function validateAnimalData(data) {
+        return data.nom is string && data.nom.size() > 0 &&
+               data.espece is string && data.espece.size() > 0 &&
+               data.sexe is string && (data.sexe == 'Mâle' || data.sexe == 'Femelle') &&
+               data.statut is string && (data.statut == 'Présent' || data.statut == 'Vendu' || data.statut == 'Décédé') &&
+               data.dateDeNaissance is timestamp || data.dateDeNaissance == null;
+      }
+
+      allow create: if isAuthenticated() && validateAnimalData(request.resource.data);
+      allow update: if isAuthenticated() && validateAnimalData(request.resource.data);
+      allow delete: if isAuthenticated();
+
+      // Sub-collections of an animal
+      match /health_logs/{logId} {
+        allow read, delete: if isAuthenticated();
+        allow create, update: if isAuthenticated() && request.resource.data.date is timestamp;
+      }
+      match /movement_logs/{logId} {
+        allow read, delete: if isAuthenticated();
+        allow create, update: if isAuthenticated() && request.resource.data.date is timestamp;
+      }
+      match /life_events/{logId} {
+        allow read, delete: if isAuthenticated();
+        allow create, update: if isAuthenticated() && request.resource.data.date is timestamp;
+      }
+      match /reproduction_logs/{logId} {
+        allow read, delete: if isAuthenticated();
+        allow create, update: if isAuthenticated() && request.resource.data.date is timestamp;
+      }
+    }
+
+    // Global collections
+    match /enclos/{encloId} {
+      allow read, create, update, delete: if isAuthenticated();
+    }
+    match /food_stock/{foodId} {
+      allow read, create, update, delete: if isAuthenticated() && request.resource.data.quantity is number;
+    }
+    match /rations/{rationId} {
+      allow read, create, update, delete: if isAuthenticated();
+    }
+    match /tasks/{taskId} {
+      allow read, delete: if isAuthenticated();
+      allow create: if isAuthenticated() && request.resource.data.isComplete == false;
+      allow update: if isAuthenticated(); // Allows marking as complete
+    }
+    match /transactions/{transactionId} {
+      allow read, create: if isAuthenticated() &&
+                           request.resource.data.amount is number &&
+                           (request.resource.data.type == 'cost' || request.resource.data.type == 'revenue');
+    }
+  }
+}
