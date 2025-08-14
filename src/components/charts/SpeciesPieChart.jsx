@@ -3,19 +3,13 @@ import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from 'recha
 
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8', '#da84d8'];
 
-const SpeciesPieChart = ({ animals }) => {
+const SpeciesPieChart = ({ stats }) => {
   const chartData = useMemo(() => {
-    if (!animals || animals.length === 0) {
+    if (!stats || !stats.bySpecies) {
       return [];
     }
-    const speciesCount = animals.reduce((acc, animal) => {
-      const species = animal.espece || 'Inconnue';
-      acc[species] = (acc[species] || 0) + 1;
-      return acc;
-    }, {});
-
-    return Object.entries(speciesCount).map(([name, value]) => ({ name, value }));
-  }, [animals]);
+    return Object.entries(stats.bySpecies).map(([name, value]) => ({ name, value }));
+  }, [stats]);
 
   if (chartData.length === 0) {
     return <p>Pas de données pour afficher le graphique des espèces.</p>;

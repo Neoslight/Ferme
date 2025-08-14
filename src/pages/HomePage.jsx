@@ -1,9 +1,10 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { collection, getDocs } from 'firebase/firestore';
 import { db } from '../firebaseConfig';
 import { Link } from 'react-router-dom';
 import { useAnimals } from '../queries/useAnimals';
+import { useDashboardStats } from '../queries/useDashboardStats';
 import SpeciesPieChart from '../components/charts/SpeciesPieChart';
 import BirthsBarChart from '../components/charts/BirthsBarChart';
 
@@ -42,14 +43,7 @@ const HomePage = () => {
     isLoading
   } = useAnimals({ ...filters, searchTerm: debouncedSearchTerm });
 
-  // Fetch all animals for stats - could be a separate query
-  const { data: allAnimals } = useQuery({
-    queryKey: ['allAnimalsForStats'],
-    queryFn: async () => {
-      const snapshot = await getDocs(collection(db, 'animals'));
-      return snapshot.docs.map(doc => doc.data());
-    }
-  });
+  const { data: stats } = useDashboardStats();
 
   const { data: enclosures } = useQuery({
     queryKey: ['enclosures'],
@@ -66,20 +60,6 @@ const HomePage = () => {
 
   const animals = data?.pages.flatMap(page => page.data) ?? [];
 
-  const stats = useMemo(() => {
-    if (!allAnimals) return { total: 0, bySpecies: {}, byStatus: {} };
-    const total = allAnimals.length;
-    const bySpecies = allAnimals.reduce((acc, animal) => {
-      acc[animal.espece] = (acc[animal.espece] || 0) + 1;
-      return acc;
-    }, {});
-    const byStatus = allAnimals.reduce((acc, animal) => {
-      acc[animal.statut] = (acc[animal.statut] || 0) + 1;
-      return acc;
-    }, {});
-    return { total, bySpecies, byStatus };
-  }, [allAnimals]);
-
   if (isLoading) {
     return <p>Chargement du tableau de bord...</p>;
   }
@@ -92,22 +72,22 @@ const HomePage = () => {
     <div>
       <h1>Tableau de Bord</h1>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '1rem', marginBottom: '2rem' }}>
-        <StatCard title="Total d'animaux" value={stats.total} />
-        {Object.entries(stats.bySpecies).map(([species, count]) => (
+        <StatCard title="Total d'animaux" value={stats?.total ?? 0} />
+        {stats?.bySpecies && Object.entries(stats.bySpecies).map(([species, count]) => (
           <StatCard key={species} title={species} value={count} />
         ))}
       </div>
 
       <div style={{ marginBottom: '2rem' }}>
         <h3>Statuts</h3>
-        {Object.entries(stats.byStatus).map(([status, count]) => (
+        {stats?.byStatus && Object.entries(stats.byStatus).map(([status, count]) => (
           <p key={status}><strong>{status}:</strong> {count}</p>
         ))}
       </div>
 
       <div className="card" style={{display: 'flex', flexWrap: 'wrap', gap: '2rem', marginBottom: '2rem'}}>
-        <div style={{flex: 1, minWidth: '300px'}}><SpeciesPieChart animals={allAnimals} /></div>
-        <div style={{flex: 1, minWidth: '400px'}}><BirthsBarChart animals={allAnimals} /></div>
+        <div style={{flex: 1, minWidth: '300px'}}><SpeciesPieChart stats={stats} /></div>
+        <div style={{flex: 1, minWidth: '400px'}}><BirthsBarChart animals={animals} /></div>
       </div>
 
       <div className="card">
