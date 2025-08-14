@@ -1,6 +1,9 @@
-import React from 'react';
+import React, { useContext } from 'react';
 import { Routes, Route, Link } from 'react-router-dom';
 import './App.css';
+import { ThemeContext } from './context/ThemeContext';
+import ThemeToggleButton from './components/ThemeToggleButton';
+import OfflineIndicator from './components/OfflineIndicator';
 
 import HomePage from './pages/HomePage';
 import AnimalDetailPage from './pages/AnimalDetailPage';
@@ -14,10 +17,13 @@ import CalendarPage from './pages/CalendarPage';
 
 
 function App() {
+  const { theme } = useContext(ThemeContext);
+
   return (
-    <div>
+    <div className={`theme-${theme}`}>
+      <OfflineIndicator />
       <nav>
-        <ul>
+        <ul style={{position: 'relative'}}>
           <li>
             <Link to="/">Tableau de Bord</Link>
           </li>
@@ -38,6 +44,9 @@ function App() {
           </li>
           <li>
             <Link to="/reports/financial">Rapport Financier</Link>
+          </li>
+          <li style={{position: 'absolute', right: 0}}>
+            <ThemeToggleButton />
           </li>
         </ul>
       </nav>

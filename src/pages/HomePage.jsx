@@ -190,10 +190,18 @@ const HomePage = () => {
             {paginatedAnimals.map(animal => (
               <li key={animal.id}>
                 <Link to={`/animal/${animal.id}`} className="animal-list-item">
-                  <div>
-                    <strong>{animal.nom}</strong> ({animal.espece})
+                  <div style={{display: 'flex', alignItems: 'center', gap: '1rem'}}>
+                    <img
+                      src={animal.photoURL || 'https://via.placeholder.com/50'}
+                      alt={animal.nom}
+                      style={{width: '50px', height: '50px', borderRadius: '50%', objectFit: 'cover'}}
+                    />
+                    <div>
+                      <strong>{animal.nom}</strong> ({animal.espece})
+                      <br/>
+                      <span style={{ color: '#888', fontSize: '0.9rem' }}>{animal.statut}</span>
+                    </div>
                   </div>
-                  <span style={{ color: '#888', fontSize: '0.9rem' }}>{animal.statut}</span>
                 </Link>
               </li>
             ))}

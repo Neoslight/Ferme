@@ -72,8 +72,11 @@ const AnimalDetailPage = () => {
   return (
     <div>
       <div className="card printable-area" style={{ marginBottom: '2rem' }}>
-        <h1>Fiche d'Identité : {animal.nom}</h1>
-        {/* We would add a photo here, e.g., <img src={animal.photoURL} alt={animal.nom} /> */}
+        <div style={{display: 'flex', gap: '2rem', alignItems: 'center', flexWrap: 'wrap'}}>
+          {animal.photoURL && <img src={animal.photoURL} alt={animal.nom} style={{width: '150px', height: '150px', objectFit: 'cover', borderRadius: '8px'}}/>}
+          <h1>{animal.nom}</h1>
+        </div>
+        <hr/>
         <p><strong>Espèce:</strong> {animal.espece}</p>
         <p><strong>Race:</strong> {animal.race}</p>
         <p><strong>Caractère:</strong> {animal.caractere || 'Non renseigné'}</p>

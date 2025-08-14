@@ -100,3 +100,40 @@ h1, h2, h3 {
     font-size: 12pt;
   }
 }
+
+/* High Contrast Theme */
+.theme-high-contrast {
+  background-color: #000 !important;
+  color: #fff !important;
+}
+
+.theme-high-contrast .card,
+.theme-high-contrast nav {
+  background-color: #111;
+  border: 1px solid #fff;
+}
+
+.theme-high-contrast h1,
+.theme-high-contrast h2,
+.theme-high-contrast h3,
+.theme-high-contrast h4,
+.theme-high-contrast h5,
+.theme-high-contrast a {
+  color: #FFFF00; /* Yellow for high visibility */
+}
+
+.theme-high-contrast button {
+  background-color: #333;
+  border: 1px solid #FFFF00;
+  color: #FFFF00;
+  font-size: 1.1rem; /* Bigger buttons */
+  padding: 0.8rem 1.4rem;
+}
+
+.theme-high-contrast input,
+.theme-high-contrast select,
+.theme-high-contrast textarea {
+  background-color: #222;
+  border: 1px solid #FFFF00;
+  color: #fff;
+}

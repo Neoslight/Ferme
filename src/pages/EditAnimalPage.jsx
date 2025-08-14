@@ -1,13 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { doc, getDoc, updateDoc, collection, getDocs } from 'firebase/firestore';
-import { db } from '../firebaseConfig';
+import { db, storage } from '../firebaseConfig';
+import { ref, uploadBytesResumable, getDownloadURL } from "firebase/storage";
 
 const EditAnimalPage = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const [formData, setFormData] = useState(null);
   const [rations, setRations] = useState([]);
+  const [imageFile, setImageFile] = useState(null);
+  const [uploadProgress, setUploadProgress] = useState(0);
 
   useEffect(() => {
     const fetchAnimalAndRations = async () => {
@@ -44,15 +47,55 @@ const EditAnimalPage = () => {
     }
     try {
       const animalDocRef = doc(db, 'animals', id);
+      const dataToUpdate = { ...formData };
+      delete dataToUpdate.photoURL; // Don't update photoURL via this form
+
       await updateDoc(animalDocRef, {
-        ...formData,
+        ...dataToUpdate,
         dateDeNaissance: formData.dateDeNaissance ? new Date(formData.dateDeNaissance) : null
       });
+      alert("Informations mises à jour !");
       navigate(`/animal/${id}`);
     } catch (error) {
       console.error("Error updating document: ", error);
       alert("Erreur lors de la mise à jour de l'animal.");
     }
+  };
+
+  const handleFileSelect = (e) => {
+    if (e.target.files[0]) {
+      setImageFile(e.target.files[0]);
+    }
+  };
+
+  const handleImageUpload = () => {
+    if (!imageFile) {
+      alert("Veuillez d'abord sélectionner une image.");
+      return;
+    }
+    const storageRef = ref(storage, `animal-photos/${id}/${imageFile.name}`);
+    const uploadTask = uploadBytesResumable(storageRef, imageFile);
+
+    uploadTask.on('state_changed',
+      (snapshot) => {
+        const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+        setUploadProgress(progress);
+      },
+      (error) => {
+        console.error("Upload failed:", error);
+        alert("Le téléversement a échoué.");
+      },
+      () => {
+        getDownloadURL(uploadTask.snapshot.ref).then((downloadURL) => {
+          const animalDocRef = doc(db, 'animals', id);
+          updateDoc(animalDocRef, { photoURL: downloadURL });
+          setFormData(prev => ({ ...prev, photoURL: downloadURL }));
+          alert("Photo mise à jour avec succès !");
+          setUploadProgress(0);
+          setImageFile(null);
+        });
+      }
+    );
   };
 
   if (!formData) {
@@ -62,7 +105,19 @@ const EditAnimalPage = () => {
   return (
     <div>
       <h1>Modifier {formData.nom}</h1>
-      <form onSubmit={handleSubmit}>
+
+      <div className="card">
+        <h3>Photo de Profil</h3>
+        {formData.photoURL && <img src={formData.photoURL} alt={formData.nom} style={{width: '150px', height: '150px', objectFit: 'cover', borderRadius: '8px', marginBottom: '1rem'}}/>}
+        <input type="file" accept="image/*" onChange={handleFileSelect} />
+        <button onClick={handleImageUpload} disabled={!imageFile || uploadProgress > 0} style={{marginTop: '0.5rem'}}>
+          {uploadProgress > 0 ? `Téléversement: ${Math.round(uploadProgress)}%` : 'Mettre à jour la photo'}
+        </button>
+        {uploadProgress > 0 && <progress value={uploadProgress} max="100" style={{width: '100%', marginTop: '0.5rem'}}/>}
+      </div>
+
+      <form onSubmit={handleSubmit} className="card">
+        <h3>Informations Générales</h3>
         <p>
           <label>Nom: </label>
           <input type="text" name="nom" value={formData.nom} onChange={handleChange} required />
@@ -107,7 +162,7 @@ const EditAnimalPage = () => {
             ))}
           </select>
         </p>
-        <button type="submit">Mettre à jour</button>
+        <button type="submit">Mettre à jour les informations</button>
       </form>
     </div>
   );
