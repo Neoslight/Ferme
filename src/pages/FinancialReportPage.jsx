@@ -1,17 +1,31 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { collection, query, where, getDocs } from 'firebase/firestore';
 import { db } from '../firebaseConfig';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 
 const FinancialReportPage = () => {
-  const [startDate, setStartDate] = useState('');
-  const [endDate, setEndDate] = useState('');
+  const [startDate, setStartDate] = useState(() => {
+    const today = new Date();
+    const yyyy = today.getFullYear();
+    const mm = String(today.getMonth() + 1).padStart(2, '0');
+    return `${yyyy}-${mm}-01`;
+  });
+
+  const [endDate, setEndDate] = useState(() => {
+    const today = new Date();
+    const yyyy = today.getFullYear();
+    const mm = String(today.getMonth() + 1).padStart(2, '0');
+    const lastDayOfMonth = new Date(yyyy, today.getMonth() + 1, 0);
+    const dd = String(lastDayOfMonth.getDate()).padStart(2, '0');
+    return `${yyyy}-${mm}-${dd}`;
+  });
+
   const [report, setReport] = useState(null);
   const [transactions, setTransactions] = useState([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
 
-  const generateReport = async () => {
+  const generateReport = useCallback(async () => {
     if (!startDate || !endDate) {
       alert("Veuillez sélectionner une date de début et une date de fin.");
       return;
@@ -60,7 +74,11 @@ const FinancialReportPage = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [startDate, endDate]);
+
+  useEffect(() => {
+    generateReport();
+  }, [generateReport]);
 
   const handleExportPDF = () => {
     const doc = new jsPDF();
