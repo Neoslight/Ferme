@@ -1,4 +1,4 @@
-import React, { useContext } from 'react';
+import React, { useContext, lazy, Suspense } from 'react';
 import { Routes, Route, Link } from 'react-router-dom';
 import './App.css';
 import { ThemeContext } from './context/ThemeContext';
@@ -8,16 +8,16 @@ import ThemeToggleButton from './components/ThemeToggleButton';
 import OfflineIndicator from './components/OfflineIndicator';
 import ProtectedRoute from './components/ProtectedRoute';
 
-import HomePage from './pages/HomePage';
-import AnimalDetailPage from './pages/AnimalDetailPage';
-import AddAnimalPage from './pages/AddAnimalPage';
-import EditAnimalPage from './pages/EditAnimalPage';
-import EnclosuresPage from './pages/EnclosuresPage';
-import FinancialReportPage from './pages/FinancialReportPage';
-import FoodStockPage from './pages/FoodStockPage';
-import RationsPage from './pages/RationsPage';
-import CalendarPage from './pages/CalendarPage';
-import LoginPage from './pages/LoginPage';
+const HomePage = lazy(() => import('./pages/HomePage'));
+const AnimalDetailPage = lazy(() => import('./pages/AnimalDetailPage'));
+const EditAnimalPage = lazy(() => import('./pages/EditAnimalPage'));
+const AddAnimalPage = lazy(() => import('./pages/AddAnimalPage'));
+const EnclosuresPage = lazy(() => import('./pages/EnclosuresPage'));
+const FinancialReportPage = lazy(() => import('./pages/FinancialReportPage'));
+const FoodStockPage = lazy(() => import('./pages/FoodStockPage'));
+const RationsPage = lazy(() => import('./pages/RationsPage'));
+const CalendarPage = lazy(() => import('./pages/CalendarPage'));
+const LoginPage = lazy(() => import('./pages/LoginPage'));
 
 
 function App() {
@@ -48,9 +48,10 @@ function App() {
       )}
 
       <main>
-        <Routes>
-          <Route path="/login" element={<LoginPage />} />
-          <Route path="/" element={<ProtectedRoute><HomePage /></ProtectedRoute>} />
+        <Suspense fallback={<div className="card"><p>Chargement de la page...</p></div>}>
+          <Routes>
+            <Route path="/login" element={<LoginPage />} />
+            <Route path="/" element={<ProtectedRoute><HomePage /></ProtectedRoute>} />
           <Route path="/animal/:id" element={<ProtectedRoute><AnimalDetailPage /></ProtectedRoute>} />
           <Route path="/animal/:id/edit" element={<ProtectedRoute><EditAnimalPage /></ProtectedRoute>} />
           <Route path="/add" element={<ProtectedRoute><AddAnimalPage /></ProtectedRoute>} />
@@ -60,6 +61,7 @@ function App() {
           <Route path="/rations" element={<ProtectedRoute><RationsPage /></ProtectedRoute>} />
           <Route path="/calendar" element={<ProtectedRoute><CalendarPage /></ProtectedRoute>} />
         </Routes>
+        </Suspense>
       </main>
     </div>
   );
